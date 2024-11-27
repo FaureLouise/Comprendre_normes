@@ -9,7 +9,7 @@ from pandas import ExcelWriter
 from streamlit_sortables import sort_items
 
 # Charger le fichier Excel
-file_path = 'C:/Users/Louise/OneDrive - Université Grenoble Alpes/Bureau/THESE/BATTERIE COMPRENDRE/APP_NORMES/.venv/NORMES_NOV_24.xlsx'
+file_path = 'NORMES_NOV_24.xlsx'
 excel_data = pd.ExcelFile(file_path)
 
 # Liste des groupes d'âge (onglets du fichier)
