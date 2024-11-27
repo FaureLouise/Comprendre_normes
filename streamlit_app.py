@@ -186,39 +186,6 @@ if st.session_state["age_selected"]:
 
 # Étape 3 : Résultats
 # Fonction pour générer un graphique radar
-def plot_radar_chart(data, categories, title="Graphique Radar"):
-    """
-    Génère un graphique radar pour les catégories et les données données.
-    
-    Parameters:
-        data (list): Les scores à tracer.
-        categories (list): Les noms des catégories correspondantes.
-        title (str): Titre du graphique.
-    """
-    num_vars = len(categories)
-    
-    # Calculer les angles pour chaque axe
-    angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
-    data += data[:1]  # Boucler le graphique
-    angles += angles[:1]
-
-    # Initialiser la figure
-    fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
-
-    # Tracer les données
-    ax.fill(angles, data, color="blue", alpha=0.25)
-    ax.plot(angles, data, color="blue", linewidth=2)
-
-    # Ajouter les étiquettes des axes
-    ax.set_yticks([])  # Pas de ticks sur l'axe radial
-    ax.set_xticks(angles[:-1])
-    ax.set_xticklabels(categories, fontsize=10)
-
-    # Ajouter un titre
-    ax.set_title(title, fontsize=14, fontweight="bold", pad=20)
-
-    return fig
-
 if st.session_state["scores_entered"]:
     st.header("Étape 3 : Résultats")
 
@@ -300,24 +267,6 @@ if st.session_state["scores_entered"]:
         # Réorganiser les données en fonction de l'ordre choisi par l'utilisateur
         filtered_data = age_data[age_data["Tâche"].isin(ordered_tasks)]
         filtered_data = filtered_data.set_index("Tâche").loc[ordered_tasks].reset_index()
-
-                # Générer le graphique radar pour chaque catégorie
-        st.subheader("Graphiques Radar par Catégorie")
-
-        # Préparer les données pour le radar
-        radar_data = age_data.groupby("Catégorie").mean(numeric_only=True).reset_index()
-
-        if not radar_data.empty:
-            for category, subdata in age_data.groupby("Catégorie"):
-                # Récupérer les noms des tâches et les Z-scores
-                tasks = subdata["Tâche"].tolist()
-                z_scores = subdata["Z-Score"].tolist()
-
-                # Générer le graphique radar
-                fig_radar = plot_radar_chart(z_scores, tasks, title=f"Radar - {category}")
-
-                # Afficher le graphique dans Streamlit
-                st.pyplot(fig_radar)
 
         # Générer le graphique uniquement si des tâches sont sélectionnées
         if not filtered_data.empty:
