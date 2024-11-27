@@ -7,7 +7,7 @@ import io
 import openpyxl
 from pandas import ExcelWriter
 from streamlit_sortables import sort_items
-
+#pmm
 # Charger le fichier Excel
 file_path = 'NORMES_NOV_24.xlsx'
 excel_data = pd.ExcelFile(file_path)
