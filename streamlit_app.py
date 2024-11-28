@@ -185,7 +185,6 @@ if st.session_state["age_selected"]:
 
 
 # Étape 3 : Résultats
-# Fonction pour générer un graphique radar
 if st.session_state["scores_entered"]:
     st.header("Étape 3 : Résultats")
 
@@ -388,6 +387,43 @@ if st.session_state["scores_entered"]:
             st.pyplot(fig)
         else: 
             st.error("Aucune tâche sélectionnée pour le graphique.")
+
+        # Étape 3bis : Ajouter un graphique radar
+        if st.session_state["scores_entered"]:
+            st.header("Graphique Radar des Résultats")
+
+            # Préparation des données pour le radar
+            radar_data = age_data[["Tâche", "Z-Score"]].dropna()  # Filtrer les tâches avec des Z-scores
+            radar_tasks = radar_data["Tâche"].tolist()
+            radar_scores = radar_data["Z-Score"].tolist()
+
+            # Ajouter la première valeur à la fin pour boucler le graphique
+            radar_scores += radar_scores[:1]
+            radar_tasks += radar_tasks[:1]
+
+            # Création du graphique radar
+            fig_radar, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
+
+            # Angle pour chaque tâche
+            angles = np.linspace(0, 2 * np.pi, len(radar_tasks), endpoint=False).tolist()
+            angles += angles[:1]  # Boucler pour fermer le graphique
+
+            # Tracer les Z-scores
+            ax.fill(angles, radar_scores, color="blue", alpha=0.25)
+            ax.plot(angles, radar_scores, color="blue", linewidth=2)
+
+            # Ajouter les étiquettes des tâches
+            ax.set_yticks([-2, 0, 2])  # Ajuster les valeurs Z importantes
+            ax.set_yticklabels(["-2", "0", "2"], fontsize=10)
+            ax.set_xticks(angles[:-1])  # Étiquettes pour chaque angle (tâche)
+            ax.set_xticklabels(radar_tasks, fontsize=11, ha="right")
+
+            # Configurer le titre et les limites
+            ax.set_title("Visualisation Radar des Résultats (Z-Scores)", size=14, weight="bold")
+            ax.set_ylim(-3, 3)  # Limites pour les Z-scores
+
+            # Afficher le graphique
+            st.pyplot(fig_radar)
 
         # Bouton pour enregistrer les résultats
         if st.button("Enregistrer les résultats dans un fichier ZIP"):
