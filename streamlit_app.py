@@ -160,9 +160,15 @@ if st.session_state["age_selected"]:
         for key, value in interferences.items():
             st.write(f"**{key}** : {value:.2f}")
 
-        # Ajouter les scores d'interférence
-        for key, value in interferences.items():
-            user_scores.append({"Tâche": key, "Score Enfant": value})
+       
+        filtered_interferences = {
+            key: value for key, value in interferences.items() if value != 0
+        }
+
+        # Ajouter uniquement les scores d'interférences non nuls
+        user_scores.extend(
+            [{"Tâche": key, "Score Enfant": value} for key, value in filtered_interferences.items()]
+        )
 
         # Convertir les scores saisis en DataFrame
         scores_df = pd.DataFrame(user_scores, columns=["Tâche", "Score Enfant"])
@@ -183,6 +189,165 @@ if st.session_state["age_selected"]:
             st.session_state["age_data"] = filled_data
             st.session_state["missing_norms"] = missing_norms
 
+# Étape 3 : Résultats
+    # Définir les catégories et le mapping des noms abrégés
+    categories_mapping = {
+        "Langage": [
+            "Discrimination Phonologique", "Décision Lexicale Auditive",
+            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Mots Outils - BOEHM"
+        ],
+        "Mémoire de Travail": [
+            "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
+            "Mémoire de travail verbale envers empan", "Mémoire de travail verbale envers brut",
+            "Mémoire de travail non verbale endroit empan", "Mémoire de travail non verbale endroit brut",
+            "Mémoire de travail non verbale envers empan", "Mémoire de travail non verbale envers brut"
+        ],
+        "Mise à jour": [
+            "Mise à jour verbale empan", "Mise à jour verbale score",
+            "Mise à jour non verbale empan", "Mise à jour non verbale score"
+        ],
+        "Inhibition": [
+            "Inhibition verbale congruent score", "Inhibition verbale incongruent score",
+            "Inhibition verbale congruent temps", "Inhibition verbale incongruent temps",
+            "Inhibition verbale interférence score", "Inhibition verbale interférence temps",
+            "Inhibition non verbale congruent score", "Inhibition non verbale incongruent score",
+            "Inhibition non verbale congruent temps", "Inhibition non verbale incongruent temps",
+            "Inhibition non verbale interférence score", "Inhibition non verbale interférence temps"
+        ]
+    }
+
+    task_name_mapping = {
+        "Discrimination Phonologique": "DP",
+        "Décision Lexicale Auditive": "DL",
+        "Mots Outils": "MO",
+        "Stock Lexical": "SL",
+        "Compréhension Syntaxique": "CS",
+        "Mots Outils - BOEHM": "BOEHM",
+        "Mémoire de travail verbale endroit empan": "MDT V\nendroit\nempan",
+        "Mémoire de travail verbale endroit brut": "MDT V\nendroit\nbrut",
+        "Mémoire de travail verbale envers empan": "MDT V\nenvers\nempan",
+        "Mémoire de travail verbale envers brut": "MDT V\nenvers\nbrut",
+        "Mémoire de travail non verbale endroit empan": "MDT NV\nendroit\nempan",
+        "Mémoire de travail non verbale endroit brut": "MDT NV\nendroit\nbrut",
+        "Mémoire de travail non verbale envers empan": "MDT NV\nenvers\nempan",
+        "Mémoire de travail non verbale envers brut": "MDT NV\nenvers\nbrut",
+        "Mise à jour verbale empan": "MAJ V\nempan",
+        "Mise à jour verbale score": "MAJ V\nbrut",
+        "Mise à jour non verbale empan": "MAJ NV\nempan",
+        "Mise à jour non verbale score": "MAJ NV\nbrut",
+        "Inhibition verbale congruent score": "INHIB VC score",
+        "Inhibition verbale incongruent score": "INHIB VI score",
+        "Inhibition verbale congruent temps": "INHIB VC temps",
+        "Inhibition verbale incongruent temps": "INHIB VI temps",
+        "Inhibition verbale interférence score": "INHIB V score",
+        "Inhibition verbale interférence temps": "INHIB V temps",
+        "Inhibition non verbale congruent score": "INHIB NVC score",
+        "Inhibition non verbale incongruent score": "INHIB NVI score",
+        "Inhibition non verbale congruent temps": "INHIB NVC temps",
+        "Inhibition non verbale incongruent temps": "INHIB NVI temps",
+        "Inhibition non verbale interférence score": "INHIB NV score",
+        "Inhibition non verbale interférence temps": "INHIB NV temps"
+    }
+
+    # Ajouter la colonne "Catégorie" pour chaque tâche
+    def plot_grouped_scores(data, selected_tasks):
+        # Définir les couleurs pour chaque catégorie
+        category_colors = {
+            "Langage": "#3798da",
+            "Mémoire de Travail": "#eca113",
+            "Mise à jour": "#4cb254",
+            "Inhibition": "#8353da",
+            "Autre": "gray"
+        }
+
+        # Filtrer les données pour inclure uniquement les tâches sélectionnées
+        data = data[data["Tâche"].isin(selected_tasks)]
+
+        # Liste des tâches (abrégées) et leurs Z-scores
+        tasks = data["Tâche"].map(task_name_mapping).tolist()
+        z_scores = data["Z-Score"].tolist()
+        positions = np.arange(len(tasks))
+        categories = data["Catégorie"].unique()
+
+        # Créer la figure et l'axe
+        fig_width = max(12, len(tasks) * 0.5)
+        fig, ax = plt.subplots(figsize=(max(12, len(tasks) * 1.5), 10))
+
+        # Tracer les points uniquement (sans relier les lignes)
+        ax.scatter(positions, z_scores, color="black", label="Z-Score", zorder=3)
+
+        # Ajouter une zone grisée pour les scores "acceptables"
+        ax.fill_between(positions, -2.5, 2.5, color="lightgray", alpha=0.5, zorder=1)
+
+        # Ligne de référence Z=0
+        ax.axhline(0, color="black", linestyle="--", linewidth=0.8, zorder=2)
+
+        # Fixer les limites de l'axe Y
+        ax.set_ylim(-10, 10)
+        y_max = ax.get_ylim()[1] 
+
+        # Définir la dernière position pour les catégories
+        last_pos = 0
+        # Parcourir les catégories
+        for category in categories:
+            # Filtrer les données pour cette catégorie
+            category_data = data[data["Catégorie"] == category]
+            category_positions = positions[last_pos:last_pos + len(category_data)]
+            category_z_scores = category_data["Z-Score"].tolist()
+
+            # Relier les points pour cette catégorie
+            ax.plot(
+                category_positions, category_z_scores, 
+                marker="o", linestyle="-", color="black", label=category
+            )
+
+            # Tracer une ligne verticale pour séparer les catégories
+            if last_pos != 0:
+                ax.axvline(last_pos - 0.5, color="black", linestyle="--", alpha=0.5, zorder=1)
+
+            # Ajouter le titre de la catégorie avec sa couleur
+            category_positions = positions[last_pos:last_pos + len(category_data)]  # Positions des tâches de la catégorie
+            mid_pos = category_positions.mean()  # Position horizontale exacte basée sur les ticks
+            ax.text(
+                mid_pos, y_max + 0.5, category,  # Décalage vertical dynamique
+                fontsize=18, fontweight="bold", ha="center", color=category_colors[category]
+            )
+            
+            # Colorer les labels des tâches sur l'axe X
+            for idx, task_pos in enumerate(range(last_pos, last_pos + len(category_data))):
+                if task_pos < len(ax.get_xticklabels()):  # Vérifiez que l'indice existe
+                    tick_label = ax.get_xticklabels()[task_pos]
+                    tick_label.set_color(category_colors[category])
+
+            last_pos += len(category_data)
+
+
+        # Configurer les ticks et les labels
+        ax.set_xticks(positions)
+        ax.set_xticklabels(tasks, fontsize=16, fontweight='bold')
+        ax.set_ylabel("Z-Score")
+        x_center = positions.mean()
+        ax.text(
+            x_center, y_max + 2, "Résultats Batterie Comprendre",  
+            fontsize=20, fontweight="bold", ha="center"
+        )
+
+        # Ajuster la mise en page
+        plt.subplots_adjust(top=0.85, bottom=0.25)
+        plt.tight_layout()
+
+        # Afficher le graphique
+        st.pyplot(fig)
+
+
+# Ajouter la colonne "Catégorie" pour chaque tâche
+def assign_category(task):
+    for category, tasks in categories_mapping.items():
+        if task in tasks:
+            print(f"Task '{task}' assigned to category '{category}'")  # Débogage
+            return category
+    return "Autre"
+
 
 # Étape 3 : Résultats
 if st.session_state["scores_entered"]:
@@ -192,6 +357,34 @@ if st.session_state["scores_entered"]:
     age_data = st.session_state["age_data"]
     missing_norms = st.session_state["missing_norms"]
 
+    # Ajouter la colonne "Catégorie" si elle n'existe pas
+    if "Catégorie" not in age_data.columns:
+        categories_mapping = {
+            "Langage": [
+                "Discrimination Phonologique", "Décision Lexicale Auditive",
+                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Mots Outils - BOEHM"
+            ],
+            "Mémoire de Travail": [
+                "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
+                "Mémoire de travail verbale envers empan", "Mémoire de travail verbale envers brut",
+                "Mémoire de travail non verbale endroit empan", "Mémoire de travail non verbale endroit brut",
+                "Mémoire de travail non verbale envers empan", "Mémoire de travail non verbale envers brut"
+            ],
+            "Mise à jour": [
+                "Mise à jour verbale empan", "Mise à jour verbale score",
+                "Mise à jour non verbale empan", "Mise à jour non verbale score"
+            ],
+            "Inhibition": [
+                "Inhibition verbale congruent score", "Inhibition verbale incongruent score",
+                "Inhibition verbale congruent temps", "Inhibition verbale incongruent temps",
+                "Inhibition verbale interférence score", "Inhibition verbale interférence temps",
+                "Inhibition non verbale congruent score", "Inhibition non verbale incongruent score",
+                "Inhibition non verbale congruent temps", "Inhibition non verbale incongruent temps",
+                "Inhibition non verbale interférence score", "Inhibition non verbale interférence temps"
+            ]
+        }
+        age_data["Catégorie"] = age_data["Tâche"].apply(assign_category)
+
     # Afficher le tableau des résultats
     st.write("")
     st.dataframe(age_data.reset_index(drop=True))
@@ -200,261 +393,19 @@ if st.session_state["scores_entered"]:
     if missing_norms:
         st.warning(f"Les normes suivantes ne sont pas disponibles : {', '.join(missing_norms)}")
 
-    # Ajout d'une colonne pour indiquer la catégorie "Langage"
-        categories_mapping = {
-            "Langage": [
-                "Discrimination Phonologique",
-                "Décision Lexicale Auditive",
-                "Mots Outils",
-                "Stock Lexical",
-                "Compréhension Syntaxique",
-                "Mots Outils - BOEHM",
-            ],
-            "FE V": [
-                "Mémoire de travail verbale endroit empan",
-                "Mémoire de travail verbale endroit brut", 
-                "Mémoire de travail verbale envers empan",
-                "Mémoire de travail verbale envers brut", 
-                "Mise à jour verbale empan", 
-                "Mise à jour verbale score", 
-                "Inhibition verbale congruent score",
-                "Inhibition verbale incongruent score",
-                "Inhibition verbale congruent temps",
-                "Inhibition verbale incongruent temps",
-                "Inhibition verbale interférence score", 
-                "Inhibition verbale interférence temps",
-            ],
-            
-            "FE NV": [
-                "Mémoire de travail non verbale endroit empan",
-                "Mémoire de travail non verbale endroit brut", 
-                "Mémoire de travail non verbale envers empan",
-                "Mémoire de travail non verbale envers brut", 
-                "Mise à jour non verbale empan", 
-                "Mise à jour non verbale score", 
-                "Inhibition non verbale congruent score",
-                "Inhibition non verbale incongruent score",
-                "Inhibition non verbale congruent temps",
-                "Inhibition non verbale incongruent temps",
-                "Inhibition non verbale interférence score", 
-                "Inhibition non verbale interférence temps",
-            ]
-        }
-        # Ajouter la colonne "Catégorie" pour chaque tâche
-        def assign_category(task):
-            for category, tasks in categories_mapping.items():
-                if task in tasks:
-                    return category
-            return "Autre"
+    # Sélection des tâches calculées
+    st.subheader("Sélectionnez les tâches à afficher dans le graphique")
+    calculated_tasks = age_data[~age_data["Z-Score"].isna()]["Tâche"].tolist()
+    selected_tasks = st.multiselect(
+        "Tâches calculées disponibles :", 
+        options=calculated_tasks, 
+        default=calculated_tasks
+    )
 
-        age_data["Catégorie"] = age_data["Tâche"].apply(assign_category)
-
-
-        # Permettre à l'utilisateur de choisir l'ordre des tâches
-        st.subheader("Réorganisez l'ordre des tâches")
-        available_tasks = age_data["Tâche"].tolist()
-        ordered_tasks = st.multiselect(
-            "Sélectionez les tâches selon l'ordre souhaité :", 
-            options=available_tasks, 
-            default=[]
-        )
-
-        # Vérifiez si l'utilisateur a sélectionné toutes les tâches
-        if len(ordered_tasks) != len(available_tasks):
-            st.warning("Vous n'avez pas sélectionné toutes les tâches. Les tâches non sélectionnées seront exclues.")
-
-        # Réorganiser les données en fonction de l'ordre choisi par l'utilisateur
-        filtered_data = age_data[age_data["Tâche"].isin(ordered_tasks)]
-        filtered_data = filtered_data.set_index("Tâche").loc[ordered_tasks].reset_index()
-
-        # Générer le graphique uniquement si des tâches sont sélectionnées
-        if not filtered_data.empty:
-            st.write("")
-
-            # Générer le graphique
-            fig, ax = plt.subplots(figsize=(8, max(4, len(filtered_data) * 0.5)))  # Taille dynamique
-
-            # Recalculer les positions Y avec un facteur d'espacement
-            spacing_factor = 1.5
-            y_pos = np.arange(len(filtered_data))[::-1] * spacing_factor  # Inversion de l'ordre
-
-            # Zone acceptable en Z-score
-            ax.fill_betweenx(
-                y_pos,
-                -2.5,
-                2.5,
-                color="#d0f0c0",
-                alpha=0.5,
-                label=""
-            )
-
-            # Ligne de référence pour Z=0
-            ax.axvline(0, color="black", linestyle="--")
-
-            # Tracer les Z-scores
-            ax.plot(
-                filtered_data["Z-Score"],
-                y_pos,
-                marker="o",
-                linestyle="-",
-                color="black",
-                label=""
-            )
-
-            # Configurer les étiquettes des tâches
-            ax.set_yticks(y_pos)
-            ax.set_yticklabels(filtered_data["Tâche"], fontsize=10, ha='right', va='center')
-
-            # Ajouter les Z-scores obtenus par l'enfant à droite avec un encadré
-            for i, z_score in enumerate(filtered_data["Z-Score"]):
-                # Déterminer la couleur de la boîte et du texte
-                if -2.5 <= z_score <= 2.5:
-                    color = "green"
-                    box_color = "#d8f5d3"
-                else:
-                    color = "gray"
-                    box_color = "#e0e0e0"
-
-                # Ajouter le texte avec décalage et encadré
-                ax.text(
-                    11,  # Décaler vers la droite pour éloigner du graphique
-                    y_pos[i],  # Position alignée verticalement avec les tâches
-                    f"{z_score:.2f}",
-                    color=color,
-                    fontsize=10,
-                    ha="left",
-                    va="center",
-                    bbox=dict(
-                        facecolor="white",  # Fond blanc
-                        edgecolor=color,  # Bordure colorée
-                        boxstyle="round,pad=0.5",  # Encadré arrondi avec padding
-                        linewidth=1,
-                    )
-                )
-
-            # Ajouter la coloration des étiquettes des tâches en fonction de leur catégorie
-            for tick, (task, category) in zip(ax.get_yticklabels(), zip(filtered_data["Tâche"], filtered_data["Catégorie"])):
-                if category == "Langage":
-                    tick.set_bbox(dict(
-                        facecolor="#fff9f0",  # Couleur de fond pour Langage
-                        edgecolor="#fdb848",  # Bordure orange
-                        boxstyle="round,pad=0.5"
-                    ))
-                elif category == "FE V":
-                    tick.set_bbox(dict(
-                        facecolor="#ebf7ff",  # Couleur de fond pour FE V
-                        edgecolor="#5cace1",  # Bordure bleue
-                        boxstyle="round,pad=0.5"
-                    ))
-                elif category == "FE NV":
-                    tick.set_bbox(dict(
-                        facecolor="#faefff",  # Couleur de fond pour FE NV
-                        edgecolor="#af7ac5",  # Bordure violette
-                        boxstyle="round,pad=0.5"
-                    ))
-                else:
-                    tick.set_bbox(dict(
-                        facecolor="white",  # Couleur de fond pour "Autre"
-                        edgecolor="gray",  # Bordure grise
-                        boxstyle="round,pad=0.5"
-                    ))
-
-                # Ajuster l'apparence du texte
-                tick.set_x(-0.05)  # Légère marge
-                tick.set_fontweight("bold")  # Texte en gras
-                tick.set_fontsize(12)        # Taille de la police
-                tick.set_color("black")      # Couleur du texte
-
-            # Ajuster les limites de l'axe Y
-            ax.set_ylim(-0.5, max(y_pos) + 0.5)
-
-            # Configurer le graphique
-            ax.set_xlabel("Z-Scores")
-            ax.set_xlim(-10, 10)  # Ajuster pour inclure les Z-scores
-            ax.set_title(
-            "Résultats obtenus à la batterie Comprendre",
-            fontdict={'fontsize': 14, 'fontweight': 'bold'}
-            )
-            
-            ax.grid(
-                color='lightgray',  # Couleur des lignes du grillage
-                linestyle='--',     # Style de ligne en pointillés
-                linewidth=0.5,      # Épaisseur des lignes
-                alpha=0.7           # Transparence du grillage
-            )
-
-            # Afficher le graphique
-            st.pyplot(fig)
-        else: 
-            st.error("Aucune tâche sélectionnée pour le graphique.")
-
-        # Étape 3bis : Ajouter un graphique radar
-        if st.session_state["scores_entered"]:
-            st.header("Graphique Radar des Résultats")
-
-            # Préparation des données pour le radar
-            radar_data = age_data[["Tâche", "Z-Score"]].dropna()  # Filtrer les tâches avec des Z-scores
-            radar_tasks = radar_data["Tâche"].tolist()
-            radar_scores = radar_data["Z-Score"].tolist()
-
-            # Ajouter la première valeur à la fin pour boucler le graphique
-            radar_scores += radar_scores[:1]
-            radar_tasks += radar_tasks[:1]
-
-            # Création du graphique radar
-            fig_radar, ax = plt.subplots(figsize=(8, 8), subplot_kw=dict(polar=True))
-
-            # Angle pour chaque tâche
-            angles = np.linspace(0, 2 * np.pi, len(radar_tasks), endpoint=False).tolist()
-            angles += angles[:1]  # Boucler pour fermer le graphique
-
-            # Tracer les Z-scores
-            ax.fill(angles, radar_scores, color="blue", alpha=0.25)
-            ax.plot(angles, radar_scores, color="blue", linewidth=2)
-
-            # Ajouter les étiquettes des tâches
-            ax.set_yticks([-2, 0, 2])  # Ajuster les valeurs Z importantes
-            ax.set_yticklabels(["-2", "0", "2"], fontsize=10)
-            ax.set_xticks(angles[:-1])  # Étiquettes pour chaque angle (tâche)
-            ax.set_xticklabels(radar_tasks, fontsize=11, ha="right")
-
-            # Configurer le titre et les limites
-            ax.set_title("Visualisation Radar des Résultats (Z-Scores)", size=14, weight="bold")
-            ax.set_ylim(-3, 3)  # Limites pour les Z-scores
-
-            # Afficher le graphique
-            st.pyplot(fig_radar)
-
-        # Bouton pour enregistrer les résultats
-        if st.button("Enregistrer les résultats dans un fichier ZIP"):
-
-            # 1. Créer un fichier en mémoire pour le graphique PNG
-            graph_buffer = io.BytesIO()
-            fig.savefig(graph_buffer, format='png', bbox_inches="tight", dpi = 300)
-            graph_buffer.seek(0)  # Revenir au début du fichier en mémoire
-
-            # 2. Créer un fichier en mémoire pour le tableau Excel
-            excel_buffer = io.BytesIO()
-            with ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-                # Sauvegarder les résultats dans une feuille Excel avec un nom personnalisé
-                age_data.to_excel(writer, index=False, sheet_name=f"Résultats_{child_id}")
-            excel_buffer.seek(0) # Revenir au début du fichier en mémoire # Revenir au début du fichier en mémoire
-
-            # 3. Créer un fichier ZIP en mémoire
-            zip_buffer = io.BytesIO()
-            with zipfile.ZipFile(zip_buffer, "w") as zf:
-                # Ajouter le graphique au fichier ZIP
-                zf.writestr(f"graphique_{child_id}.png", graph_buffer.getvalue())
-                # Ajouter le tableau des résultats au fichier ZIP
-                zf.writestr(f"tableau_{child_id}.xlsx", excel_buffer.getvalue())
-
-            zip_buffer.seek(0)  # Revenir au début du fichier ZIP en mémoire
-
-            # 4. Proposer le téléchargement du fichier ZIP
-            st.download_button(
-                label="Télécharger le fichier ZIP",
-                data=zip_buffer,
-                file_name=f"resultats_comprendre_{child_id}.zip",
-                mime="application/zip"
-            )
+    # Vérifiez que des tâches sont sélectionnées
+    if selected_tasks:
+        # Appeler la fonction pour tracer le graphique
+        plot_grouped_scores(age_data, selected_tasks)
+    else:
+        st.warning("Veuillez sélectionner au moins une tâche à afficher.")
 
