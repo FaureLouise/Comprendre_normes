@@ -15,14 +15,29 @@ excel_data = pd.ExcelFile(file_path)
 # Liste des groupes d'âge (onglets du fichier)
 age_groups = excel_data.sheet_names
 
-# Initialisation des clés de session
+
 if "age_selected" not in st.session_state:
     st.session_state["age_selected"] = False
+
 if "scores_entered" not in st.session_state:
     st.session_state["scores_entered"] = False
 
+if "age_data" not in st.session_state:
+    st.session_state["age_data"] = pd.DataFrame()
+
+if "missing_norms" not in st.session_state:
+    st.session_state["missing_norms"] = []
+
+
 # Titre de l'application
-st.title("Batterie COMPRENDRE")
+st.markdown(
+    """
+    <div style="text-align: center; font-size: 40px; font-weight: bold;">
+        🗣️ Batterie COMPRENDRE 🧠
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # Étape 1 : Sélection de l'âge
 st.header("Étape 1 : Sélectionnez le groupe d'âge")
@@ -235,18 +250,18 @@ if st.session_state["age_selected"]:
         "Mise à jour verbale score": "MAJ V\nbrut",
         "Mise à jour non verbale empan": "MAJ NV\nempan",
         "Mise à jour non verbale score": "MAJ NV\nbrut",
-        "Inhibition verbale congruent score": "INHIB VC score",
-        "Inhibition verbale incongruent score": "INHIB VI score",
-        "Inhibition verbale congruent temps": "INHIB VC temps",
-        "Inhibition verbale incongruent temps": "INHIB VI temps",
-        "Inhibition verbale interférence score": "INHIB V score",
-        "Inhibition verbale interférence temps": "INHIB V temps",
-        "Inhibition non verbale congruent score": "INHIB NVC score",
-        "Inhibition non verbale incongruent score": "INHIB NVI score",
-        "Inhibition non verbale congruent temps": "INHIB NVC temps",
-        "Inhibition non verbale incongruent temps": "INHIB NVI temps",
-        "Inhibition non verbale interférence score": "INHIB NV score",
-        "Inhibition non verbale interférence temps": "INHIB NV temps"
+        "Inhibition verbale congruent score": "INHIB VC \nscore",
+        "Inhibition verbale incongruent score": "INHIB VI \nscore",
+        "Inhibition verbale congruent temps": "INHIB VC \ntemps",
+        "Inhibition verbale incongruent temps": "INHIB VI \ntemps",
+        "Inhibition verbale interférence score": "INHIB V \nscore",
+        "Inhibition verbale interférence temps": "INHIB V \ntemps",
+        "Inhibition non verbale congruent score": "INHIB NVC \nscore",
+        "Inhibition non verbale incongruent score": "INHIB NVI \nscore",
+        "Inhibition non verbale congruent temps": "INHIB NVC \ntemps",
+        "Inhibition non verbale incongruent temps": "INHIB NVI \ntemps",
+        "Inhibition non verbale interférence score": "INHIB NV \nscore",
+        "Inhibition non verbale interférence temps": "INHIB NV \ntemps"
     }
 
     # Ajouter la colonne "Catégorie" pour chaque tâche
@@ -266,15 +281,21 @@ if st.session_state["age_selected"]:
         # Liste des tâches (abrégées) et leurs Z-scores
         tasks = data["Tâche"].map(task_name_mapping).tolist()
         z_scores = data["Z-Score"].tolist()
-        positions = np.arange(len(tasks))
-        categories = data["Catégorie"].unique()
 
-        # Créer la figure et l'axe
-        fig_width = max(12, len(tasks) * 0.5)
-        fig, ax = plt.subplots(figsize=(max(12, len(tasks) * 1.5), 10))
+        positions = np.arange(len(tasks))  # Une position unique par tâche
 
-        # Tracer les points uniquement (sans relier les lignes)
-        ax.scatter(positions, z_scores, color="black", label="Z-Score", zorder=3)
+        # Ajouter une colonne pour les positions dans le DataFrame
+        data["Position"] = positions
+
+        # Créer la figure
+        fig_width = max(12, len(tasks) * 1.5)
+        fig_height = 10
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+
+        # Tracer les points pour chaque tâche
+        point_colors = data["Catégorie"].map(category_colors)
+        
+        ax.scatter(positions, z_scores, color=point_colors, s=100, label="Z-Score", zorder=3)
 
         # Ajouter une zone grisée pour les scores "acceptables"
         ax.fill_between(positions, -2.5, 2.5, color="lightgray", alpha=0.5, zorder=1)
@@ -284,45 +305,44 @@ if st.session_state["age_selected"]:
 
         # Fixer les limites de l'axe Y
         ax.set_ylim(-10, 10)
-        y_max = ax.get_ylim()[1] 
-
-        # Définir la dernière position pour les catégories
-        last_pos = 0
-        # Parcourir les catégories
-        for category in categories:
-            # Filtrer les données pour cette catégorie
-            category_data = data[data["Catégorie"] == category]
-            category_positions = positions[last_pos:last_pos + len(category_data)]
-            category_z_scores = category_data["Z-Score"].tolist()
-
-            # Relier les points pour cette catégorie
-            ax.plot(
-                category_positions, category_z_scores, 
-                marker="o", linestyle="-", color="black", label=category
-            )
-
-            # Tracer une ligne verticale pour séparer les catégories
-            if last_pos != 0:
-                ax.axvline(last_pos - 0.5, color="black", linestyle="--", alpha=0.5, zorder=1)
-
-            # Ajouter le titre de la catégorie avec sa couleur
-            category_positions = positions[last_pos:last_pos + len(category_data)]  # Positions des tâches de la catégorie
-            mid_pos = category_positions.mean()  # Position horizontale exacte basée sur les ticks
-            ax.text(
-                mid_pos, y_max + 0.5, category,  # Décalage vertical dynamique
-                fontsize=18, fontweight="bold", ha="center", color=category_colors[category]
-            )
-            
-            # Colorer les labels des tâches sur l'axe X
-            for idx, task_pos in enumerate(range(last_pos, last_pos + len(category_data))):
-                if task_pos < len(ax.get_xticklabels()):  # Vérifiez que l'indice existe
-                    tick_label = ax.get_xticklabels()[task_pos]
-                    tick_label.set_color(category_colors[category])
-
-            last_pos += len(category_data)
-
+        y_max = ax.get_ylim()[1]
 
         # Configurer les ticks et les labels
+        ax.set_xticks(positions)
+        ax.set_xticklabels(tasks, fontsize=12, fontweight="bold")
+
+        last_pos = None  # Commencer avant la première position
+        for idx, category in enumerate(category_colors.keys()):
+            # Filtrer les données pour cette catégorie
+            category_data = data[data["Catégorie"] == category]
+            
+            # Obtenir les positions des tâches dans la catégorie
+            category_positions = category_data["Position"].tolist() if not category_data.empty else []
+            
+            # Relier les points avec une ligne si la catégorie n'est pas vide
+            if category_positions:
+                ax.plot(
+                    category_positions, category_data["Z-Score"].tolist(),
+                    marker="o", linestyle="-", color=category_colors[category],
+                    label=category, zorder=4, linewidth=4
+                )
+                
+            # Ajouter le titre de la catégorie au-dessus des points
+            if category_positions:
+                mid_pos = np.mean(category_positions)
+                ax.text(
+                    mid_pos, y_max + 0.5, category,
+                    fontsize=18, fontweight="bold", ha="center", color=category_colors[category]
+                )
+
+
+     
+        # Colorer les labels des ticks en fonction des catégories
+        for idx, task_label in enumerate(ax.get_xticklabels()):
+            task_category = data.iloc[idx]["Catégorie"]
+            task_label.set_color(category_colors.get(task_category, "gray"))
+
+        # Ajouter un titre
         ax.set_xticks(positions)
         ax.set_xticklabels(tasks, fontsize=16, fontweight='bold')
         ax.set_ylabel("Z-Score")
@@ -389,23 +409,64 @@ if st.session_state["scores_entered"]:
     st.write("")
     st.dataframe(age_data.reset_index(drop=True))
 
-    # Afficher les tâches sans normes
-    if missing_norms:
-        st.warning(f"Les normes suivantes ne sont pas disponibles : {', '.join(missing_norms)}")
-
+    # Sélection des tâches calculées
     # Sélection des tâches calculées
     st.subheader("Sélectionnez les tâches à afficher dans le graphique")
     calculated_tasks = age_data[~age_data["Z-Score"].isna()]["Tâche"].tolist()
+    tasks_by_category = {}
+    for category, tasks in categories_mapping.items():
+        tasks_in_category = [task for task in tasks if task in calculated_tasks]
+        if tasks_in_category:
+            tasks_by_category[category] = tasks_in_category
+
+    # Ajouter des boutons pour sélectionner ou désélectionner toutes les tâches
+    col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
+    with col2:
+        if st.button("Tout sélectionner"):
+            selected_tasks = calculated_tasks
+        else:
+            selected_tasks = []
+
+    with col4:
+        if st.button("Tout désélectionner"):
+            selected_tasks = []
+
+    # Interface utilisateur pour sélectionner les tâches par catégories
     selected_tasks = st.multiselect(
         "Tâches calculées disponibles :", 
         options=calculated_tasks, 
-        default=calculated_tasks
+        default=selected_tasks,
+        help="Vous pouvez rechercher ou sélectionner des tâches dans la liste."
     )
 
-    # Vérifiez que des tâches sont sélectionnées
-    if selected_tasks:
-        # Appeler la fonction pour tracer le graphique
-        plot_grouped_scores(age_data, selected_tasks)
-    else:
-        st.warning("Veuillez sélectionner au moins une tâche à afficher.")
+# Fonction pour sauvegarder le graphique
+    def save_graph_and_data(data, selected_tasks):
+        # Création des fichiers en mémoire
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as zf:
+            # Sauvegarder le graphique
+            fig_buffer = io.BytesIO()
+            plot_grouped_scores(data, selected_tasks)
+            plt.savefig(fig_buffer, format='png', dpi=300, bbox_inches="tight")
+            fig_buffer.seek(0)
+            zf.writestr(f"{st.session_state['child_id']}_Graphique_Comprendre.png", fig_buffer.read())
 
+            # Sauvegarder le tableau des résultats en Excel
+            excel_buffer = io.BytesIO()
+            data.to_excel(excel_buffer, index=False, engine="openpyxl")
+            excel_buffer.seek(0)
+            zf.writestr(f"{st.session_state['child_id']}_Tableau_Comprendre.xlsx", excel_buffer.read())
+
+        buffer.seek(0)
+        return buffer
+
+    # Bouton pour télécharger le fichier ZIP
+    if st.session_state["scores_entered"] and selected_tasks:
+        st.subheader("Téléchargez les résultats")
+        zip_file = save_graph_and_data(age_data, selected_tasks)
+        st.download_button(
+            label="📥 Télécharger le tableau des résultats et le graphique (ZIP)",
+            data=zip_file,
+            file_name=f"{st.session_state['child_id']}_Resultats_Comprendre.zip",
+            mime="application/zip"
+        )
