@@ -289,7 +289,7 @@ if st.session_state["age_selected"]:
 
         # Créer la figure
         fig_width = max(12, len(tasks) * 1.5)
-        fig_height = 10
+        fig_height = 8
         fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
         # Tracer les points pour chaque tâche
