@@ -7,6 +7,7 @@ import io
 import openpyxl
 from pandas import ExcelWriter
 from streamlit_sortables import sort_items
+from scipy.stats import norm
 #pmm
 # Charger le fichier Excel
 file_path = 'NORMES_NOV_24.xlsx'
@@ -191,6 +192,26 @@ if st.session_state["age_selected"]:
         # Fusionner avec les données originales pour les calculs
         merged_data = pd.merge(age_data, scores_df, on="Tâche", how="left")
         merged_data["Z-Score"] = (merged_data["Score Enfant"] - merged_data["Moyenne"]) / merged_data["Ecart-type"]
+        merged_data["Z-Score"] = pd.to_numeric(merged_data["Z-Score"], errors="coerce")
+        merged_data = merged_data.dropna(subset=["Z-Score"])
+
+
+
+        # Inverser les Z-scores pour les variables de temps d'inhibition
+        time_variables = [
+            "Inhibition verbale congruent temps",
+            "Inhibition verbale incongruent temps",
+            "Inhibition non verbale congruent temps",
+            "Inhibition non verbale incongruent temps", 
+            "Inhibition verbale interférence temps", 
+            "Inhibition non verbale interférence temps"
+        ]
+
+        # Appliquer l'inversion des Z-scores uniquement aux variables concernées
+        merged_data.loc[merged_data["Tâche"].isin(time_variables), "Z-Score"] *= -1
+        
+        # Ajouter une colonne pour les percentiles (%) à partir des Z-scores
+        merged_data["Percentile (%)"] = norm.cdf(merged_data["Z-Score"]) * 100
 
         # Filtrer les tâches avec des scores saisis
         filled_data = merged_data[~merged_data["Score Enfant"].isna()]
@@ -270,7 +291,7 @@ if st.session_state["age_selected"]:
         category_colors = {
             "Langage": "#3798da",
             "Mémoire de Travail": "#eca113",
-            "Mise à jour": "#4cb254",
+            "Mise à jour": "#e365d6",
             "Inhibition": "#8353da",
             "Autre": "gray"
         }
@@ -280,7 +301,7 @@ if st.session_state["age_selected"]:
 
         # Liste des tâches (abrégées) et leurs Z-scores
         tasks = data["Tâche"].map(task_name_mapping).tolist()
-        z_scores = data["Z-Score"].tolist()
+        percentiles = data["Percentile (%)"].tolist()
 
         positions = np.arange(len(tasks))  # Une position unique par tâche
 
@@ -288,72 +309,86 @@ if st.session_state["age_selected"]:
         data["Position"] = positions
 
         # Créer la figure
-        fig_width = max(12, len(tasks) * 1.5)
-        fig_height = 8
+        fig_width = 14
+        fig_height = max(10, len(tasks) * 0.6)
         fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
         # Tracer les points pour chaque tâche
         point_colors = data["Catégorie"].map(category_colors)
-        
-        ax.scatter(positions, z_scores, color=point_colors, s=100, label="Z-Score", zorder=3)
+        ax.scatter(percentiles, positions, color=point_colors, s=100, zorder=3)
 
-        # Ajouter une zone grisée pour les scores "acceptables"
-        ax.fill_between(positions, -2.5, 2.5, color="lightgray", alpha=0.5, zorder=1)
+        # Ajouter des zones colorées pour les catégories
+        ax.fill_betweenx(positions, 0, 2.3, color="#d44646", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 2.3, 15, color="#f5a72f", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 15, 85, color="#60cd72", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 85, 97.7, color="#8ddf9b", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 97.7, 100, color="#aedeb6", alpha=0.2, zorder=1)
 
         # Ligne de référence Z=0
-        ax.axhline(0, color="black", linestyle="--", linewidth=0.8, zorder=2)
-
-        # Fixer les limites de l'axe Y
-        ax.set_ylim(-10, 10)
-        y_max = ax.get_ylim()[1]
+        ax.axvline(50, color="black", linestyle="--", linewidth=0.8, zorder=2)
+        
+        ax.set_xlim(0, 100)  # Axe X : percentiles de 0 à 100
+        ax.set_ylim(-1, len(tasks))
 
         # Configurer les ticks et les labels
-        ax.set_xticks(positions)
-        ax.set_xticklabels(tasks, fontsize=12, fontweight="bold")
+        ax.set_xticks([0, 2.3, 15, 50, 85, 97.7, 100])
+        ax.set_xticklabels(["0", "2.3", "15", "50", "85", "97.7", "100"], fontsize=12, fontweight="bold", rotation = -35)
+        ax.set_yticks(positions)
+        ax.set_yticklabels(tasks, fontsize=16, fontweight="bold")
+        ax.set_xlabel("Percentiles (%)", fontsize=14)
+        ax.set_ylabel("")
+        ax.set_title("Résultats Batterie Comprendre", fontsize=24, fontweight="bold")
 
         last_pos = None  # Commencer avant la première position
         for idx, category in enumerate(category_colors.keys()):
             # Filtrer les données pour cette catégorie
             category_data = data[data["Catégorie"] == category]
             
-            # Obtenir les positions des tâches dans la catégorie
+            # Obtenir les positions et les percentiles pour les tâches dans la catégorie
             category_positions = category_data["Position"].tolist() if not category_data.empty else []
-            
+            category_percentiles = category_data["Percentile (%)"].tolist() if not category_data.empty else []
+
             # Relier les points avec une ligne si la catégorie n'est pas vide
-            if category_positions:
+            if category_positions and category_percentiles:
                 ax.plot(
-                    category_positions, category_data["Z-Score"].tolist(),
+                    category_percentiles,  # Les percentiles sur l'axe X
+                    category_positions,   # Les positions sur l'axe Y
                     marker="o", linestyle="-", color=category_colors[category],
-                    label=category, zorder=4, linewidth=4
+                    label=category, zorder=4, linewidth=2
                 )
+
+        # Ajouter des titres par catégorie sur l'axe Y
+        for category, color in category_colors.items():
+            # Filtrer les tâches dans la catégorie
+            category_data = data[data["Catégorie"] == category]
+            
+            # Si la catégorie n'est pas vide, ajouter un titre
+            if not category_data.empty:
+                # Calculer la position moyenne des tâches de la catégorie
+                category_positions = category_data["Position"].tolist()
+                mid_position = np.mean(category_positions)
                 
-            # Ajouter le titre de la catégorie au-dessus des points
-            if category_positions:
-                mid_pos = np.mean(category_positions)
+                # Ajouter le texte pour le titre de la catégorie
                 ax.text(
-                    mid_pos, y_max + 0.5, category,
-                    fontsize=18, fontweight="bold", ha="center", color=category_colors[category]
+                    x=-10,  # Décalage vers la gauche (en dehors des ticks Y)
+                    y=mid_position,
+                    s=category,
+                    color=color,
+                    fontsize=20,
+                    fontweight="bold",
+                    ha="right",  # Aligner à droite
+                    va="center", 
+                    rotation=90
                 )
 
-
-     
         # Colorer les labels des ticks en fonction des catégories
-        for idx, task_label in enumerate(ax.get_xticklabels()):
-            task_category = data.iloc[idx]["Catégorie"]
-            task_label.set_color(category_colors.get(task_category, "gray"))
-
-        # Ajouter un titre
-        ax.set_xticks(positions)
-        ax.set_xticklabels(tasks, fontsize=16, fontweight='bold')
-        ax.set_ylabel("Z-Score")
-        x_center = positions.mean()
-        ax.text(
-            x_center, y_max + 2, "Résultats Batterie Comprendre",  
-            fontsize=20, fontweight="bold", ha="center"
-        )
+        for idx, task_label in enumerate(ax.get_yticklabels()):
+            if idx < len(data):
+                task_category = data.iloc[idx]["Catégorie"]
+                task_label.set_color(category_colors.get(task_category, "gray"))
 
         # Ajuster la mise en page
-        plt.subplots_adjust(top=0.85, bottom=0.25)
+        plt.subplots_adjust(left=0.3, right=0.95, top=0.85, bottom=0.15)
         plt.tight_layout()
 
         # Afficher le graphique
