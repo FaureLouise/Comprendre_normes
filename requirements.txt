@@ -2,3 +2,4 @@ streamlit
 matplotlib
 streamlit_sortables
 openpyxl
+scipy
