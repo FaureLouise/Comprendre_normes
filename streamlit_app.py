@@ -208,7 +208,7 @@ if st.session_state["age_selected"]:
         ]
 
         # Appliquer l'inversion des Z-scores uniquement aux variables concernées
-        merged_data.loc[merged_data["Tâche"].isin(time_variables), "Z-Score"] *= -1
+        #merged_data.loc[merged_data["Tâche"].isin(time_variables), "Z-Score"] *= -1
         
         # Ajouter une colonne pour les percentiles (%) à partir des Z-scores
         merged_data["Percentile (%)"] = norm.cdf(merged_data["Z-Score"]) * 100
@@ -310,7 +310,7 @@ if st.session_state["age_selected"]:
 
         # Créer la figure
         fig_width = 14
-        fig_height = max(10, len(tasks) * 0.6)
+        fig_height = max(10, len(tasks) * 1.5)
         fig, ax = plt.subplots(figsize=(fig_width, fig_height))
 
         # Tracer les points pour chaque tâche
@@ -370,9 +370,9 @@ if st.session_state["age_selected"]:
                 
                 # Ajouter le texte pour le titre de la catégorie
                 ax.text(
-                    x=-10,  # Décalage vers la gauche (en dehors des ticks Y)
+                    x=-15,  # Décalage vers la gauche (en dehors des ticks Y)
                     y=mid_position,
-                    s=category,
+                    s=category.upper(),
                     color=color,
                     fontsize=20,
                     fontweight="bold",
