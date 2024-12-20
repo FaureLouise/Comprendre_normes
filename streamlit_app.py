@@ -34,7 +34,7 @@ if "missing_norms" not in st.session_state:
 st.markdown(
     """
     <div style="text-align: center; font-size: 40px; font-weight: bold;">
-        🗣️ Batterie COMPRENDRE 🧠
+        Batterie COMPRENDRE
     </div>
     """,
     unsafe_allow_html=True
@@ -318,11 +318,11 @@ if st.session_state["age_selected"]:
         ax.scatter(percentiles, positions, color=point_colors, s=100, zorder=3)
 
         # Ajouter des zones colorées pour les catégories
-        ax.fill_betweenx(positions, 0, 2.3, color="#d44646", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 2.3, 15, color="#f5a72f", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 0, 3, color="#d44646", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 3, 15, color="#f5a72f", alpha=0.2, zorder=1)
         ax.fill_betweenx(positions, 15, 85, color="#60cd72", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 85, 97.7, color="#8ddf9b", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 97.7, 100, color="#aedeb6", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 85, 97, color="#8ddf9b", alpha=0.2, zorder=1)
+        ax.fill_betweenx(positions, 97, 100, color="#aedeb6", alpha=0.2, zorder=1)
 
         # Ligne de référence Z=0
         ax.axvline(50, color="black", linestyle="--", linewidth=0.8, zorder=2)
@@ -331,8 +331,8 @@ if st.session_state["age_selected"]:
         ax.set_ylim(-1, len(tasks))
 
         # Configurer les ticks et les labels
-        ax.set_xticks([0, 2.3, 15, 50, 85, 97.7, 100])
-        ax.set_xticklabels(["0", "2.3", "15", "50", "85", "97.7", "100"], fontsize=12, fontweight="bold", rotation = -35)
+        ax.set_xticks([0, 3, 15, 50, 85, 97, 100])
+        ax.set_xticklabels(["0", "3", "15", "50", "85", "97", "100"], fontsize=12, fontweight="bold", rotation = -35)
         ax.set_yticks(positions)
         ax.set_yticklabels(tasks, fontsize=16, fontweight="bold")
         ax.set_xlabel("Percentiles (%)", fontsize=14)
