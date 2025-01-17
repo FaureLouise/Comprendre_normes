@@ -8,6 +8,7 @@ import openpyxl
 from pandas import ExcelWriter
 from streamlit_sortables import sort_items
 from scipy.stats import norm
+from matplotlib.patches import FancyBboxPatch
 #pmm
 # Charger le fichier Excel
 file_path = 'NORMES_NOV_24.xlsx'
@@ -253,36 +254,36 @@ if st.session_state["age_selected"]:
     }
 
     task_name_mapping = {
-        "Discrimination Phonologique": "DP",
-        "Décision Lexicale Auditive": "DL",
-        "Mots Outils": "MO",
-        "Stock Lexical": "SL",
-        "Compréhension Syntaxique": "CS",
+        "Discrimination Phonologique": "Discrimination\nPhonologique",
+        "Décision Lexicale Auditive": "Décision \nLexicale\nAuditive",
+        "Mots Outils": "Mots\nOutils",
+        "Stock Lexical": "Stock\nLexical",
+        "Compréhension Syntaxique": "Compréhension\nSyntaxique",
         "Mots Outils - BOEHM": "BOEHM",
-        "Mémoire de travail verbale endroit empan": "MDT V\nendroit\nempan",
-        "Mémoire de travail verbale endroit brut": "MDT V\nendroit\nbrut",
-        "Mémoire de travail verbale envers empan": "MDT V\nenvers\nempan",
-        "Mémoire de travail verbale envers brut": "MDT V\nenvers\nbrut",
-        "Mémoire de travail non verbale endroit empan": "MDT NV\nendroit\nempan",
-        "Mémoire de travail non verbale endroit brut": "MDT NV\nendroit\nbrut",
-        "Mémoire de travail non verbale envers empan": "MDT NV\nenvers\nempan",
-        "Mémoire de travail non verbale envers brut": "MDT NV\nenvers\nbrut",
-        "Mise à jour verbale empan": "MAJ V\nempan",
-        "Mise à jour verbale score": "MAJ V\nbrut",
-        "Mise à jour non verbale empan": "MAJ NV\nempan",
-        "Mise à jour non verbale score": "MAJ NV\nbrut",
-        "Inhibition verbale congruent score": "INHIB VC \nscore",
-        "Inhibition verbale incongruent score": "INHIB VI \nscore",
-        "Inhibition verbale congruent temps": "INHIB VC \ntemps",
-        "Inhibition verbale incongruent temps": "INHIB VI \ntemps",
-        "Inhibition verbale interférence score": "INHIB V \nscore",
-        "Inhibition verbale interférence temps": "INHIB V \ntemps",
-        "Inhibition non verbale congruent score": "INHIB NVC \nscore",
-        "Inhibition non verbale incongruent score": "INHIB NVI \nscore",
-        "Inhibition non verbale congruent temps": "INHIB NVC \ntemps",
-        "Inhibition non verbale incongruent temps": "INHIB NVI \ntemps",
-        "Inhibition non verbale interférence score": "INHIB NV \nscore",
-        "Inhibition non verbale interférence temps": "INHIB NV \ntemps"
+        "Mémoire de travail verbale endroit empan": "Mémoire de travail\nVebrale\nendroit\nempan",
+        "Mémoire de travail verbale endroit brut": "Mémoire de travail\nVerbale\nendroit\nbrut",
+        "Mémoire de travail verbale envers empan": "Mémoire de travail\nVerbale\nenvers\nempan",
+        "Mémoire de travail verbale envers brut": "Mémoire de travail\nVerbale\nenvers\nbrut",
+        "Mémoire de travail non verbale endroit empan": "Mémoire de travail\nNon Verbale\nendroit\nempan",
+        "Mémoire de travail non verbale endroit brut": "Mémoire de travail\nNon Verbale\nendroit\nbrut",
+        "Mémoire de travail non verbale envers empan": "Mémoire de travail\nNon Verbale\nenvers\nempan",
+        "Mémoire de travail non verbale envers brut": "Mémoire de travail\nNon Verbale\nenvers\nbrut",
+        "Mise à jour verbale empan": "Mise-à-jour\nVerbale\nempan",
+        "Mise à jour verbale score": "Mise-à-jour\nVerbale\nbrut",
+        "Mise à jour non verbale empan": "Mise-à-jour\nNon Verbale\nempan",
+        "Mise à jour non verbale score": "Mise-à-jour\nNon Verbale\nbrut",
+        "Inhibition verbale congruent score": "Inhibition\nVerbale\nCongruent\nscore",
+        "Inhibition verbale incongruent score": "Inhibition\nVerbale\nIncongruent\nscore",
+        "Inhibition verbale congruent temps": "Inhibition\nVerbale\nCongruent\ntemps",
+        "Inhibition verbale incongruent temps": "Inhibition\nVerbale\nIncongruent\ntemps",
+        "Inhibition verbale interférence score": "Inhibition\nVerbale\nscore",
+        "Inhibition verbale interférence temps": "Inhibition\nVerbale\ntemps",
+        "Inhibition non verbale congruent score": "Inhibition\nNon Verbale\nCongruent\nscore",
+        "Inhibition non verbale incongruent score": "Inhibition\nNon Verbale\nIncongruent\nscore",
+        "Inhibition non verbale congruent temps": "Inhibition\nNon Verbale\nCongruent\ntemps",
+        "Inhibition non verbale incongruent temps": "Inhibition\nNon Verbale\nIncongruent\ntemps",
+        "Inhibition non verbale interférence score": "Inhibition\nNon Verbale\nscore",
+        "Inhibition non verbale interférence temps": "Inhibition\nNon Verbale\ntemps"
     }
 
     # Ajouter la colonne "Catégorie" pour chaque tâche
@@ -317,17 +318,60 @@ if st.session_state["age_selected"]:
         point_colors = data["Catégorie"].map(category_colors)
         ax.scatter(percentiles, positions, color=point_colors, s=100, zorder=3)
 
+# Ajouter les scores de l'enfant avec un cadre coloré autour
+        for i, (score, category) in enumerate(zip(data["Score Enfant"], data["Catégorie"])):
+            color = category_colors.get(category, "gray")  # Obtenir la couleur de la catégorie
+
+            # Calculer la hauteur en fonction de l'espacement des points sur l'axe Y
+            if len(positions) > 1:  # Éviter une division par zéro
+                spacing = positions[1] - positions[0]  # Espacement vertical entre les points
+            else:
+                spacing = 1  # Valeur par défaut pour une seule tâche
+
+            box_height = spacing*0.001  # Ajuster la hauteur proportionnellement à l'espacement
+            vertical_offset = box_height / 2  # Centrer le cadre autour du point
+
+            # Ajouter le cadre
+            bbox = FancyBboxPatch(
+                (105, positions[i] - vertical_offset),  # Coordonnées (x, y) centrées
+                width=10,  # Largeur du cadre
+                height=box_height,  # Hauteur ajustée dynamiquement
+                boxstyle="round,pad=0.3",  # Angles arrondis avec padding
+                linewidth=2,  # Épaisseur de la bordure
+                edgecolor=color,  # Couleur de la bordure
+                facecolor="white",  # Couleur de fond
+                alpha=1,  # Transparence légère
+                zorder=1  # Couche d'affichage
+            )
+            ax.add_patch(bbox)  # Ajouter le cadre au graphique
+
+            # Ajouter le texte centré dans le cadre
+            ax.text(
+                x=110,  # Position X centrée dans le cadre
+                y=positions[i],  # Position Y alignée verticalement au centre
+                s=f"{score:.0f}",  # Le score formaté
+                fontsize=14,
+                fontweight = "bold", 
+                color="black",  # Couleur du texte
+                ha="center",  # Alignement horizontal centré
+                va="center",  # Alignement vertical centré
+                zorder=2  # Couche d'affichage au-dessus du cadre
+            )
+
+
+
         # Ajouter des zones colorées pour les catégories
-        ax.fill_betweenx(positions, 0, 3, color="#d44646", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 3, 15, color="#f5a72f", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 15, 85, color="#60cd72", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 85, 97, color="#8ddf9b", alpha=0.2, zorder=1)
-        ax.fill_betweenx(positions, 97, 100, color="#aedeb6", alpha=0.2, zorder=1)
+        ax.fill_betweenx(range(-1, len(tasks)+1), 0, 3, color="#d44646", alpha=0.2, zorder=1)  # Zone rouge
+        ax.fill_betweenx(range(-1, len(tasks)+1), 3, 15, color="#f5a72f", alpha=0.2, zorder=1)  # Zone orange
+        ax.fill_betweenx(range(-1, len(tasks)+1), 15, 85, color="#60cd72", alpha=0.2, zorder=1)  # Zone verte
+        ax.fill_betweenx(range(-1, len(tasks)+1), 85, 97, color="#8ddf9b", alpha=0.2, zorder=1)  # Zone vert clair
+        ax.fill_betweenx(range(-1, len(tasks)+1), 97, 100, color="#aedeb6", alpha=0.2, zorder=1)  # Zone bleue
+
 
         # Ligne de référence Z=0
         ax.axvline(50, color="black", linestyle="--", linewidth=0.8, zorder=2)
         
-        ax.set_xlim(0, 100)  # Axe X : percentiles de 0 à 100
+        ax.set_xlim(0, 120)  # Axe X : percentiles de 0 à 100
         ax.set_ylim(-1, len(tasks))
 
         # Configurer les ticks et les labels
@@ -370,7 +414,7 @@ if st.session_state["age_selected"]:
                 
                 # Ajouter le texte pour le titre de la catégorie
                 ax.text(
-                    x=-15,  # Décalage vers la gauche (en dehors des ticks Y)
+                    x=-30,  # Décalage vers la gauche (en dehors des ticks Y)
                     y=mid_position,
                     s=category.upper(),
                     color=color,
@@ -444,7 +488,6 @@ if st.session_state["scores_entered"]:
     st.write("")
     st.dataframe(age_data.reset_index(drop=True))
 
-    # Sélection des tâches calculées
     # Sélection des tâches calculées
     st.subheader("Sélectionnez les tâches à afficher dans le graphique")
     calculated_tasks = age_data[~age_data["Z-Score"].isna()]["Tâche"].tolist()
