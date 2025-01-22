@@ -196,8 +196,6 @@ if st.session_state["age_selected"]:
         merged_data["Z-Score"] = pd.to_numeric(merged_data["Z-Score"], errors="coerce")
         merged_data = merged_data.dropna(subset=["Z-Score"])
 
-
-
         # Inverser les Z-scores pour les variables de temps d'inhibition
         time_variables = [
             "Inhibition verbale congruent temps",
@@ -207,9 +205,6 @@ if st.session_state["age_selected"]:
             "Inhibition verbale interférence temps", 
             "Inhibition non verbale interférence temps"
         ]
-
-        # Appliquer l'inversion des Z-scores uniquement aux variables concernées
-        #merged_data.loc[merged_data["Tâche"].isin(time_variables), "Z-Score"] *= -1
         
         # Ajouter une colonne pour les percentiles (%) à partir des Z-scores
         merged_data["Percentile (%)"] = norm.cdf(merged_data["Z-Score"]) * 100
@@ -255,7 +250,7 @@ if st.session_state["age_selected"]:
 
     task_name_mapping = {
         "Discrimination Phonologique": "Discrimination\nPhonologique",
-        "Décision Lexicale Auditive": "Décision \nLexicale\nAuditive",
+        "Décision Lexicale Auditive": "Décision\nLexicale\nAuditive",
         "Mots Outils": "Mots\nOutils",
         "Stock Lexical": "Stock\nLexical",
         "Compréhension Syntaxique": "Compréhension\nSyntaxique",
@@ -334,20 +329,19 @@ if st.session_state["age_selected"]:
             # Ajouter le cadre
             bbox = FancyBboxPatch(
                 (105, positions[i] - vertical_offset),  # Coordonnées (x, y) centrées
-                width=10,  # Largeur du cadre
+                width=8,  # Largeur du cadre
                 height=box_height,  # Hauteur ajustée dynamiquement
-                boxstyle="round,pad=0.3",  # Angles arrondis avec padding
+                boxstyle="square,pad=0.1",  # Angles arrondis avec padding
                 linewidth=2,  # Épaisseur de la bordure
                 edgecolor=color,  # Couleur de la bordure
                 facecolor="white",  # Couleur de fond
-                alpha=1,  # Transparence légère
                 zorder=1  # Couche d'affichage
             )
             ax.add_patch(bbox)  # Ajouter le cadre au graphique
 
             # Ajouter le texte centré dans le cadre
             ax.text(
-                x=110,  # Position X centrée dans le cadre
+                x=109,  # Position X centrée dans le cadre
                 y=positions[i],  # Position Y alignée verticalement au centre
                 s=f"{score:.0f}",  # Le score formaté
                 fontsize=14,
@@ -380,10 +374,17 @@ if st.session_state["age_selected"]:
         ax.set_yticks(positions)
         ax.set_yticklabels(tasks, fontsize=16, fontweight="bold")
         ax.set_xlabel("Percentiles (%)", fontsize=14)
+        ax.xaxis.set_label_coords(0.43, -0.05)
         ax.set_ylabel("")
-        ax.set_title("Résultats Batterie Comprendre", fontsize=24, fontweight="bold")
 
-        last_pos = None  # Commencer avant la première position
+        fig.suptitle(
+            "Résultats Batterie Comprendre",
+            fontsize=24,
+            fontweight="bold",
+            x= 0.53, 
+            y=1       
+        )
+
         for idx, category in enumerate(category_colors.keys()):
             # Filtrer les données pour cette catégorie
             category_data = data[data["Catégorie"] == category]
@@ -402,6 +403,7 @@ if st.session_state["age_selected"]:
                 )
 
         # Ajouter des titres par catégorie sur l'axe Y
+        # Ajouter des titres par catégorie sur l'axe Y
         for category, color in category_colors.items():
             # Filtrer les tâches dans la catégorie
             category_data = data[data["Catégorie"] == category]
@@ -412,24 +414,41 @@ if st.session_state["age_selected"]:
                 category_positions = category_data["Position"].tolist()
                 mid_position = np.mean(category_positions)
                 
-                # Ajouter le texte pour le titre de la catégorie
+                # Ajouter le texte pour le titre de la catégorie avec un cadre coloré
                 ax.text(
                     x=-30,  # Décalage vers la gauche (en dehors des ticks Y)
                     y=mid_position,
                     s=category.upper(),
-                    color=color,
+                    color=color,  # Couleur du texte
                     fontsize=20,
                     fontweight="bold",
                     ha="right",  # Aligner à droite
                     va="center", 
-                    rotation=90
+                    rotation=90,
+                    bbox=dict(
+                        facecolor="white",  # Couleur de fond
+                        edgecolor=color,    # Couleur de la bordure (correspond à la catégorie)
+                        boxstyle="round,pad=0.3",  # Bord arrondi avec padding
+                        linewidth=2,         # Épaisseur de la bordure
+                        alpha=1              # Transparence du fond
+                    )
                 )
+
 
         # Colorer les labels des ticks en fonction des catégories
         for idx, task_label in enumerate(ax.get_yticklabels()):
             if idx < len(data):
                 task_category = data.iloc[idx]["Catégorie"]
                 task_label.set_color(category_colors.get(task_category, "gray"))
+                
+        
+        for spine in ["top", "right", "bottom", "left"]:
+            ax.spines[spine].set_color("white")  # Couleur noire pour la bordure
+            ax.spines[spine].set_linewidth(0)    # Épaisseur de la bordure
+
+        # Supprimer la bordure noire à droite
+        ax.spines["right"].set_visible(False)
+
 
         # Ajuster la mise en page
         plt.subplots_adjust(left=0.3, right=0.95, top=0.85, bottom=0.15)
