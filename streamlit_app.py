@@ -19,7 +19,6 @@ excel_data = pd.ExcelFile(file_path)
 # Liste des groupes d'âge (onglets du fichier)
 age_groups = excel_data.sheet_names
 
-
 if "age_selected" not in st.session_state:
     st.session_state["age_selected"] = False
 
@@ -32,8 +31,6 @@ if "age_data" not in st.session_state:
 if "missing_norms" not in st.session_state:
     st.session_state["missing_norms"] = []
 
-
-# Titre de l'application
 st.markdown(
     """
     <div style="text-align: center; font-size: 40px; font-weight: bold;">
@@ -43,21 +40,20 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# Étape 1 : Sélection de l'âge
+#Âge ET ID
 st.header("Étape 1 : Sélectionnez le groupe d'âge")
 selected_age_group = st.selectbox("Sélectionnez le groupe d'âge de l'enfant :", age_groups)
 child_id = st.text_input("Saisissez l'ID de l'enfant :", value="", placeholder="ID de l'enfant")
 
-# Confirmation de l'ID et de l'âge
 if st.button("Passer à l'étape suivante"):
-    if not child_id.strip():  # Vérifiez si l'ID est vide
+    if not child_id.strip(): 
         st.error("Veuillez saisir un ID valide avant de continuer.")
     else:
         st.session_state["age_selected"] = True
-        st.session_state["child_id"] = child_id  # Enregistrez l'ID dans la session
+        st.session_state["child_id"] = child_id 
         st.success(f"ID {child_id} et âge {selected_age_group} confirmés.")
         
-# Fonction pour charger les données d'un onglet
+        
 def load_age_data(sheet_name, excel_file):
     try:
         return pd.read_excel(excel_file, sheet_name=sheet_name, engine="openpyxl")
@@ -65,17 +61,14 @@ def load_age_data(sheet_name, excel_file):
         st.error(f"Erreur lors du chargement des données : {e}")
         return pd.DataFrame()
 
-# Étape 2 : Saisie des scores
+
 if st.session_state["age_selected"]:
     st.header("Étape 2 : Entrez les scores")
-
-    # Charger les données pour le groupe d'âge sélectionné
     age_data = load_age_data(selected_age_group, excel_data)
 
     if age_data.empty:
         st.error("Impossible de charger les données pour le groupe d'âge sélectionné.")
     else:
-        # Filtrer les colonnes pertinentes
         age_data = age_data[["Tâche", "Moyenne", "Ecart-type", "Minimum", 
                              "5e percentile", "10e percentile", "Q1", 
                              "Q2 - mediane", "Q3", "90e percentile", "Maximum"]].dropna()
@@ -125,7 +118,7 @@ if st.session_state["age_selected"]:
                 with col1:
                     if task1 in age_data["Tâche"].values:
                         score1 = st.text_input(f"{task1} :", value="")
-                        if score1.strip():  # Si l'utilisateur a saisi une valeur
+                        if score1.strip(): 
                             try:
                                 score1 = float(score1)
                                 user_scores.append({"Tâche": task1, "Score Enfant": score1})
@@ -141,7 +134,7 @@ if st.session_state["age_selected"]:
                 with col2:
                     if task2 in age_data["Tâche"].values:
                         score2 = st.text_input(f"{task2} :", value="")
-                        if score2.strip():  # Si l'utilisateur a saisi une valeur
+                        if score2.strip():  
                             try:
                                 score2 = float(score2)
                                 user_scores.append({"Tâche": task2, "Score Enfant": score2})
@@ -154,7 +147,6 @@ if st.session_state["age_selected"]:
                         missing_norms.append(task2)
 
         # Calculs des interférences
-                # Calculs des interférences
         interferences = {
             "Inhibition verbale interférence score": (
                 inhibition_scores.get("Inhibition verbale incongruent score", 0) 
@@ -174,7 +166,6 @@ if st.session_state["age_selected"]:
             )
         }
 
-        # Afficher les résultats des interférences au fur et à mesure
         st.subheader("Scores d'interférence calculés")
         for key, value in interferences.items():
             st.write(f"**{key}** : {value:.2f}")
@@ -184,12 +175,10 @@ if st.session_state["age_selected"]:
             key: value for key, value in interferences.items() if value != 0
         }
 
-        # Ajouter uniquement les scores d'interférences non nuls
         user_scores.extend(
             [{"Tâche": key, "Score Enfant": value} for key, value in filtered_interferences.items()]
         )
 
-        # Convertir les scores saisis en DataFrame
         scores_df = pd.DataFrame(user_scores, columns=["Tâche", "Score Enfant"])
 
         # Fusionner avec les données originales pour les calculs
@@ -208,13 +197,9 @@ if st.session_state["age_selected"]:
             "Inhibition non verbale interférence temps"
         ]
         
-        # Ajouter une colonne pour les percentiles (%) à partir des Z-scores
         merged_data["Percentile (%)"] = norm.cdf(merged_data["Z-Score"]) * 100
 
-        # Filtrer les tâches avec des scores saisis
         filled_data = merged_data[~merged_data["Score Enfant"].isna()]
-
-        # Supprimer les doublons
         filled_data = filled_data.drop_duplicates(subset="Tâche")
 
         # Bouton pour confirmer les scores
@@ -224,7 +209,6 @@ if st.session_state["age_selected"]:
             st.session_state["missing_norms"] = missing_norms
 
 # Étape 3 : Résultats
-    # Définir les catégories et le mapping des noms abrégés
     categories_mapping = {
         "Langage": [
             "Discrimination Phonologique", "Décision Lexicale Auditive",
@@ -285,7 +269,6 @@ if st.session_state["age_selected"]:
 
     # Ajouter la colonne "Catégorie" pour chaque tâche
     def plot_grouped_scores(data, selected_tasks):
-        # Définir les couleurs pour chaque catégorie
         category_colors = {
             "Langage": "#3798da",
             "Mémoire de Travail": "#eca113",
@@ -301,7 +284,7 @@ if st.session_state["age_selected"]:
         tasks = data["Tâche"].map(task_name_mapping).tolist()
         percentiles = data["Percentile (%)"].tolist()
 
-        positions = np.arange(len(tasks))  # Une position unique par tâche
+        positions = np.arange(len(tasks))  
 
         # Ajouter une colonne pour les positions dans le DataFrame
         data["Position"] = positions
@@ -317,13 +300,13 @@ if st.session_state["age_selected"]:
 
 # Ajouter les scores de l'enfant avec un cadre coloré autour
         for i, (score, category) in enumerate(zip(data["Score Enfant"], data["Catégorie"])):
-            color = category_colors.get(category, "gray")  # Obtenir la couleur de la catégorie
+            color = category_colors.get(category, "gray")  
 
             # Calculer la hauteur en fonction de l'espacement des points sur l'axe Y
-            if len(positions) > 1:  # Éviter une division par zéro
-                spacing = positions[1] - positions[0]  # Espacement vertical entre les points
+            if len(positions) > 1:  
+                spacing = positions[1] - positions[0]  
             else:
-                spacing = 1  # Valeur par défaut pour une seule tâche
+                spacing = 1  
 
             box_height = spacing*0.001  # Ajuster la hauteur proportionnellement à l'espacement
             vertical_offset = box_height / 2  # Centrer le cadre autour du point
@@ -461,7 +444,6 @@ if st.session_state["age_selected"]:
 def assign_category(task):
     for category, tasks in categories_mapping.items():
         if task in tasks:
-            #print(f"Task '{task}' assigned to category '{category}'")  # Débogage
             return category
     return "Autre"
 
@@ -470,11 +452,10 @@ def assign_category(task):
 if st.session_state["scores_entered"]:
     st.header("Étape 3 : Résultats")
 
-    # Récupérer les données mises à jour
     age_data = st.session_state["age_data"]
     missing_norms = st.session_state["missing_norms"]
 
-    # Ajouter la colonne "Catégorie" si elle n'existe pas
+
     if "Catégorie" not in age_data.columns:
         categories_mapping = {
             "Langage": [
@@ -506,7 +487,7 @@ if st.session_state["scores_entered"]:
     st.write("")
     df_to_style = age_data.copy()
     
-    # Supprimer la colonne "Catégorie" et réinitialiser l'index
+    # Supprimer la colonne "Catégorie"
     df_to_display = age_data.drop(columns=["Catégorie"]).reset_index(drop=True)
     def format_floats(value):
         if isinstance(value, float):
@@ -514,26 +495,25 @@ if st.session_state["scores_entered"]:
         return value
     
 
-    # Appliquer le formatage à toutes les colonnes numériques
     df_to_style = df_to_style.applymap(format_floats)  
     df_to_style["Percentile (%)"] = pd.to_numeric(age_data["Percentile (%)"], errors="coerce")
 
-    # Fonction pour appliquer le gradient de couleur sur les "Percentile (%)"
+    #couleur sur les percentiles
     def color_percentiles_by_range(value):
-        if pd.isna(value):  # Vérifier si la valeur est NaN
-            return ''  # Pas de style pour les NaN
-        value = float(value)  # Convertir en float pour les comparaisons
+        if pd.isna(value):  
+            return ''  
+        value = float(value)  
         if value <= 3:
-            return 'background-color: rgba(212, 70, 70, 0.5); color: black;'  # Rouge avec transparence
+            return 'background-color: rgba(212, 70, 70, 0.5); color: black;'  
         elif value <= 15:
-            return 'background-color: rgba(245, 167, 47, 0.5); color: black;'  # Orange avec transparence
+            return 'background-color: rgba(245, 167, 47, 0.5); color: black;'  
         elif value <= 85:
-            return 'background-color: rgba(96, 205, 114, 0.5); color: black;'  # Vert avec transparence
+            return 'background-color: rgba(96, 205, 114, 0.5); color: black;'  
         elif value <= 97:
-            return 'background-color: rgba(141, 223, 155, 0.5); color: black;'  # Vert clair avec transparence
+            return 'background-color: rgba(141, 223, 155, 0.5); color: black;'  
         elif value <= 100:
-            return 'background-color: rgba(174, 222, 182, 0.5); color: black;'  # Bleu clair avec transparence
-        return ''  # Pas de style si hors range
+            return 'background-color: rgba(174, 222, 182, 0.5); color: black;'  
+        return ''  
 
     def color_task_text_by_category(row):
         category_colors = {
@@ -547,22 +527,20 @@ if st.session_state["scores_entered"]:
         color = category_colors.get(category, "black")
         return [f"color: {color}; font-weight: bold;" if col == "Tâche" else "" for col in row.index]
 
-    # Appliquer le style de coloration
+    # Couleur percentiles
     styled_df = df_to_style.style.applymap(color_percentiles_by_range, subset=["Percentile (%)"])
     styled_df = styled_df.apply(color_task_text_by_category, axis=1)
 
-     # Ajuster la largeur des colonnes avec `column_config`
+    # Taille colonne
     col_config = {
         df_to_display.columns[0]: st.column_config.Column(width=300),  # Première colonne à 300
     }
     col_config.update({col: st.column_config.Column(width=100) for col in df_to_display.columns[1:]})  # Le reste à 100
 
-    # Afficher le tableau sans index et avec largeurs ajustées
     st.dataframe(styled_df, hide_index=True, use_container_width=True)
 
 
-
-    # Sélection des tâches calculées
+    # Sélection des tâches
     st.subheader("Sélectionnez les tâches à afficher dans le graphique")
     calculated_tasks = age_data[~age_data["Z-Score"].isna()]["Tâche"].tolist()
     tasks_by_category = {}
@@ -571,7 +549,6 @@ if st.session_state["scores_entered"]:
         if tasks_in_category:
             tasks_by_category[category] = tasks_in_category
 
-    # Ajouter des boutons pour sélectionner ou désélectionner toutes les tâches
     col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
     with col2:
         if st.button("Tout sélectionner"):
@@ -583,7 +560,7 @@ if st.session_state["scores_entered"]:
         if st.button("Tout désélectionner"):
             selected_tasks = []
 
-    # Interface utilisateur pour sélectionner les tâches par catégories
+    # Bouton sélection des tâches
     selected_tasks = st.multiselect(
         "Tâches calculées disponibles :", 
         options=calculated_tasks, 
@@ -591,14 +568,13 @@ if st.session_state["scores_entered"]:
         help="Vous pouvez rechercher ou sélectionner des tâches dans la liste."
     )
 
-# Fonction pour sauvegarder le graphique
+# Sauvegarde graphique
     def save_styled_excel(dataframe):
-        # Créer un nouveau Workbook
         wb = Workbook()
         ws = wb.active
         ws.title = "Résultats"
 
-        # Définir les styles
+        # remplissage percentiles
         fill_colors = {
             "red": "D44646",
             "orange": "F5A72F",
@@ -607,7 +583,16 @@ if st.session_state["scores_entered"]:
             "blue": "AEDFB6",
         }
 
-        # Ajouter les en-têtes
+        # couleurs catégories
+        category_colors = {
+            "Langage": "3798DA",
+            "Mémoire de Travail": "ECA113",
+            "Mise à jour": "E365D6",
+            "Inhibition": "8353DA",
+            "Autre": "808080",
+        }
+
+        #en-têtes
         headers = list(dataframe.columns)
         ws.append(headers)
         header_font = Font(bold=True)
@@ -615,69 +600,76 @@ if st.session_state["scores_entered"]:
             for cell in col:
                 cell.font = header_font
 
-        # Ajouter les données ligne par ligne
+        # Couleur excel
         for idx, row in dataframe.iterrows():
-            ws.append(row.values)
+            ws.append(row.values.tolist())  
+            excel_row = ws[idx + 2]  
 
-        # Appliquer les styles par condition
-        for row in ws.iter_rows(min_row=2, max_row=len(dataframe) + 1, min_col=1, max_col=len(headers)):
-            for cell in row:
-                # Style pour la colonne "Percentile (%)"
-                if cell.column == headers.index("Percentile (%)") + 1:
+            for col_idx, cell in enumerate(excel_row, start=1):
+                
+                # Couleur percentiles
+                if headers[col_idx - 1] == "Percentile (%)":
                     try:
                         value = float(cell.value)
                         if value <= 3:
-                            cell.fill = PatternFill(start_color=fill_colors["red"], end_color=fill_colors["red"], fill_type="solid")
+                            fill_color = fill_colors["red"]
                         elif value <= 15:
-                            cell.fill = PatternFill(start_color=fill_colors["orange"], end_color=fill_colors["orange"], fill_type="solid")
+                            fill_color = fill_colors["orange"]
                         elif value <= 85:
-                            cell.fill = PatternFill(start_color=fill_colors["green"], end_color=fill_colors["green"], fill_type="solid")
+                            fill_color = fill_colors["green"]
                         elif value <= 97:
-                            cell.fill = PatternFill(start_color=fill_colors["light_green"], end_color=fill_colors["light_green"], fill_type="solid")
+                            fill_color = fill_colors["light_green"]
                         elif value <= 100:
-                            cell.fill = PatternFill(start_color=fill_colors["blue"], end_color=fill_colors["blue"], fill_type="solid")
-                    except (ValueError, TypeError):
-                        pass  # Ignorez si ce n'est pas un float
-                # Style pour la colonne "Tâche" basé sur les catégories
-                elif headers[cell.column - 1] == "Tâche":
-                    category = dataframe.loc[idx - 1, "Catégorie"]  # Obtenez la catégorie
-                    category_colors = {
-                        "Langage": "3798DA",
-                        "Mémoire de Travail": "ECA113",
-                        "Mise à jour": "E365D6",
-                        "Inhibition": "8353DA",
-                        "Autre": "808080",
-                    }
-                    color = category_colors.get(category, "000000")
-                    cell.font = Font(color=color, bold=True)
+                            fill_color = fill_colors["blue"]
+                        else:
+                            fill_color = None
 
-        # Sauvegarder le fichier en mémoire
+                        if fill_color:
+                            cell.fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
+                    except (ValueError, TypeError):
+                        pass  
+
+                # couleur colone tâche
+                if headers[col_idx - 1] == "Tâche":
+                    category = dataframe.loc[idx, "Catégorie"]
+                    color = category_colors.get(category, "000000")  
+                    cell.font = Font(color=color, bold=True)
+                
         buffer = io.BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
+        try:
+            wb.save(buffer)  
+            buffer.seek(0)  
+        except Exception as e:
+            st.error(f"Erreur lors de la sauvegarde du fichier Excel : {e}")
+            return None  
+
         return buffer
 
+
     def save_graph_and_data(data, selected_tasks):
-        # Création des fichiers en mémoire
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as zf:
-            # Sauvegarder le graphique
+            
+            # graphique
             fig_buffer = io.BytesIO()
-            plot_grouped_scores(data, selected_tasks)
+            plot_grouped_scores(data, selected_tasks)  
             plt.savefig(fig_buffer, format='png', dpi=300, bbox_inches="tight")
+            plt.close()  
             fig_buffer.seek(0)
             zf.writestr(f"{st.session_state['child_id']}_Graphique_Comprendre.png", fig_buffer.read())
 
-            # Sauvegarder le tableau des résultats en Excel
-            #df_to_export = age_data.drop(columns=["Catégorie"]).reset_index(drop=True)
-            styled_excel = save_styled_excel(age_data)
-            zf.writestr(f"{st.session_state['child_id']}_Tableau_Comprendre.xlsx", styled_excel.read())
+            # Excel
+            styled_excel = save_styled_excel(data) 
+            if styled_excel: 
+                zf.writestr(f"{st.session_state['child_id']}_Tableau_Comprendre.xlsx", styled_excel.read())
+            else:
+                st.warning("Le fichier Excel n'a pas pu être généré et ne sera pas inclus dans l'archive.")
 
         buffer.seek(0)
         return buffer
 
-    # Bouton pour télécharger le fichier ZIP
-    if st.session_state["scores_entered"] and selected_tasks:
+
+if st.session_state["scores_entered"] and selected_tasks:
         st.subheader("Téléchargez les résultats")
         zip_file = save_graph_and_data(age_data, selected_tasks)
         st.download_button(
