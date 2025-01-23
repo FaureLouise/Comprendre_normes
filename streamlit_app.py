@@ -9,7 +9,9 @@ from pandas import ExcelWriter
 from streamlit_sortables import sort_items
 from scipy.stats import norm
 from matplotlib.patches import FancyBboxPatch
-#pmm
+from openpyxl.styles import PatternFill, Font
+from openpyxl import Workbook
+
 # Charger le fichier Excel
 file_path = 'NORMES_NOV_24.xlsx'
 excel_data = pd.ExcelFile(file_path)
@@ -352,8 +354,6 @@ if st.session_state["age_selected"]:
                 zorder=2  # Couche d'affichage au-dessus du cadre
             )
 
-
-
         # Ajouter des zones colorées pour les catégories
         ax.fill_betweenx(range(-1, len(tasks)+1), 0, 3, color="#d44646", alpha=0.2, zorder=1)  # Zone rouge
         ax.fill_betweenx(range(-1, len(tasks)+1), 3, 15, color="#f5a72f", alpha=0.2, zorder=1)  # Zone orange
@@ -403,7 +403,6 @@ if st.session_state["age_selected"]:
                 )
 
         # Ajouter des titres par catégorie sur l'axe Y
-        # Ajouter des titres par catégorie sur l'axe Y
         for category, color in category_colors.items():
             # Filtrer les tâches dans la catégorie
             category_data = data[data["Catégorie"] == category]
@@ -416,17 +415,17 @@ if st.session_state["age_selected"]:
                 
                 # Ajouter le texte pour le titre de la catégorie avec un cadre coloré
                 ax.text(
-                    x=-30,  # Décalage vers la gauche (en dehors des ticks Y)
+                    x=-25,  # Décalage vers la gauche (en dehors des ticks Y)
                     y=mid_position,
                     s=category.upper(),
-                    color=color,  # Couleur du texte
+                    color="white",  # Couleur du texte
                     fontsize=20,
                     fontweight="bold",
                     ha="right",  # Aligner à droite
                     va="center", 
                     rotation=90,
                     bbox=dict(
-                        facecolor="white",  # Couleur de fond
+                        facecolor=color,  # Couleur de fond
                         edgecolor=color,    # Couleur de la bordure (correspond à la catégorie)
                         boxstyle="round,pad=0.3",  # Bord arrondi avec padding
                         linewidth=2,         # Épaisseur de la bordure
@@ -462,7 +461,7 @@ if st.session_state["age_selected"]:
 def assign_category(task):
     for category, tasks in categories_mapping.items():
         if task in tasks:
-            print(f"Task '{task}' assigned to category '{category}'")  # Débogage
+            #print(f"Task '{task}' assigned to category '{category}'")  # Débogage
             return category
     return "Autre"
 
@@ -505,7 +504,63 @@ if st.session_state["scores_entered"]:
 
     # Afficher le tableau des résultats
     st.write("")
-    st.dataframe(age_data.reset_index(drop=True))
+    df_to_style = age_data.copy()
+    
+    # Supprimer la colonne "Catégorie" et réinitialiser l'index
+    df_to_display = age_data.drop(columns=["Catégorie"]).reset_index(drop=True)
+    def format_floats(value):
+        if isinstance(value, float):
+            return f"{value:.2f}".rstrip('0').rstrip('.')  # Arrondir à deux décimales et supprimer les zéros inutiles
+        return value
+    
+
+    # Appliquer le formatage à toutes les colonnes numériques
+    df_to_style = df_to_style.applymap(format_floats)  
+    df_to_style["Percentile (%)"] = pd.to_numeric(age_data["Percentile (%)"], errors="coerce")
+
+    # Fonction pour appliquer le gradient de couleur sur les "Percentile (%)"
+    def color_percentiles_by_range(value):
+        if pd.isna(value):  # Vérifier si la valeur est NaN
+            return ''  # Pas de style pour les NaN
+        value = float(value)  # Convertir en float pour les comparaisons
+        if value <= 3:
+            return 'background-color: rgba(212, 70, 70, 0.5); color: black;'  # Rouge avec transparence
+        elif value <= 15:
+            return 'background-color: rgba(245, 167, 47, 0.5); color: black;'  # Orange avec transparence
+        elif value <= 85:
+            return 'background-color: rgba(96, 205, 114, 0.5); color: black;'  # Vert avec transparence
+        elif value <= 97:
+            return 'background-color: rgba(141, 223, 155, 0.5); color: black;'  # Vert clair avec transparence
+        elif value <= 100:
+            return 'background-color: rgba(174, 222, 182, 0.5); color: black;'  # Bleu clair avec transparence
+        return ''  # Pas de style si hors range
+
+    def color_task_text_by_category(row):
+        category_colors = {
+            "Langage": "#3798da",
+            "Mémoire de Travail": "#eca113",
+            "Mise à jour": "#e365d6",
+            "Inhibition": "#8353da",
+            "Autre": "gray"
+        }
+        category = row["Catégorie"]
+        color = category_colors.get(category, "black")
+        return [f"color: {color}; font-weight: bold;" if col == "Tâche" else "" for col in row.index]
+
+    # Appliquer le style de coloration
+    styled_df = df_to_style.style.applymap(color_percentiles_by_range, subset=["Percentile (%)"])
+    styled_df = styled_df.apply(color_task_text_by_category, axis=1)
+
+     # Ajuster la largeur des colonnes avec `column_config`
+    col_config = {
+        df_to_display.columns[0]: st.column_config.Column(width=300),  # Première colonne à 300
+    }
+    col_config.update({col: st.column_config.Column(width=100) for col in df_to_display.columns[1:]})  # Le reste à 100
+
+    # Afficher le tableau sans index et avec largeurs ajustées
+    st.dataframe(styled_df, hide_index=True, use_container_width=True)
+
+
 
     # Sélection des tâches calculées
     st.subheader("Sélectionnez les tâches à afficher dans le graphique")
@@ -537,6 +592,71 @@ if st.session_state["scores_entered"]:
     )
 
 # Fonction pour sauvegarder le graphique
+    def save_styled_excel(dataframe):
+        # Créer un nouveau Workbook
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Résultats"
+
+        # Définir les styles
+        fill_colors = {
+            "red": "D44646",
+            "orange": "F5A72F",
+            "green": "60CD72",
+            "light_green": "8DDF9B",
+            "blue": "AEDFB6",
+        }
+
+        # Ajouter les en-têtes
+        headers = list(dataframe.columns)
+        ws.append(headers)
+        header_font = Font(bold=True)
+        for col in ws.iter_cols(min_row=1, max_row=1, min_col=1, max_col=len(headers)):
+            for cell in col:
+                cell.font = header_font
+
+        # Ajouter les données ligne par ligne
+        for idx, row in dataframe.iterrows():
+            ws.append(row.values)
+
+        # Appliquer les styles par condition
+        for row in ws.iter_rows(min_row=2, max_row=len(dataframe) + 1, min_col=1, max_col=len(headers)):
+            for cell in row:
+                # Style pour la colonne "Percentile (%)"
+                if cell.column == headers.index("Percentile (%)") + 1:
+                    try:
+                        value = float(cell.value)
+                        if value <= 3:
+                            cell.fill = PatternFill(start_color=fill_colors["red"], end_color=fill_colors["red"], fill_type="solid")
+                        elif value <= 15:
+                            cell.fill = PatternFill(start_color=fill_colors["orange"], end_color=fill_colors["orange"], fill_type="solid")
+                        elif value <= 85:
+                            cell.fill = PatternFill(start_color=fill_colors["green"], end_color=fill_colors["green"], fill_type="solid")
+                        elif value <= 97:
+                            cell.fill = PatternFill(start_color=fill_colors["light_green"], end_color=fill_colors["light_green"], fill_type="solid")
+                        elif value <= 100:
+                            cell.fill = PatternFill(start_color=fill_colors["blue"], end_color=fill_colors["blue"], fill_type="solid")
+                    except (ValueError, TypeError):
+                        pass  # Ignorez si ce n'est pas un float
+                # Style pour la colonne "Tâche" basé sur les catégories
+                elif headers[cell.column - 1] == "Tâche":
+                    category = dataframe.loc[idx - 1, "Catégorie"]  # Obtenez la catégorie
+                    category_colors = {
+                        "Langage": "3798DA",
+                        "Mémoire de Travail": "ECA113",
+                        "Mise à jour": "E365D6",
+                        "Inhibition": "8353DA",
+                        "Autre": "808080",
+                    }
+                    color = category_colors.get(category, "000000")
+                    cell.font = Font(color=color, bold=True)
+
+        # Sauvegarder le fichier en mémoire
+        buffer = io.BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer
+
     def save_graph_and_data(data, selected_tasks):
         # Création des fichiers en mémoire
         buffer = io.BytesIO()
@@ -549,10 +669,9 @@ if st.session_state["scores_entered"]:
             zf.writestr(f"{st.session_state['child_id']}_Graphique_Comprendre.png", fig_buffer.read())
 
             # Sauvegarder le tableau des résultats en Excel
-            excel_buffer = io.BytesIO()
-            data.to_excel(excel_buffer, index=False, engine="openpyxl")
-            excel_buffer.seek(0)
-            zf.writestr(f"{st.session_state['child_id']}_Tableau_Comprendre.xlsx", excel_buffer.read())
+            #df_to_export = age_data.drop(columns=["Catégorie"]).reset_index(drop=True)
+            styled_excel = save_styled_excel(age_data)
+            zf.writestr(f"{st.session_state['child_id']}_Tableau_Comprendre.xlsx", styled_excel.read())
 
         buffer.seek(0)
         return buffer
