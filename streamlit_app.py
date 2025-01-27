@@ -157,12 +157,12 @@ if st.session_state["age_selected"]:
                 - inhibition_scores.get("Inhibition non verbale congruent score", 0)
             ),
             "Inhibition verbale interférence temps": (
-                inhibition_scores.get("Inhibition verbale incongruent temps", 0) 
-                - inhibition_scores.get("Inhibition verbale congruent temps", 0)
+                inhibition_scores.get("Inhibition verbale congruent temps", 0) 
+                - inhibition_scores.get("Inhibition verbale incongruent temps", 0)
             ),
             "Inhibition non verbale interférence temps": (
-                inhibition_scores.get("Inhibition non verbale incongruent temps", 0) 
-                - inhibition_scores.get("Inhibition non verbale congruent temps", 0)
+                inhibition_scores.get("Inhibition non verbale congruent temps", 0) 
+                - inhibition_scores.get("Inhibition non verbale incongruent temps", 0)
             )
         }
 
@@ -181,22 +181,24 @@ if st.session_state["age_selected"]:
 
         scores_df = pd.DataFrame(user_scores, columns=["Tâche", "Score Enfant"])
 
-        # Fusionner avec les données originales pour les calculs
-        merged_data = pd.merge(age_data, scores_df, on="Tâche", how="left")
-        merged_data["Z-Score"] = (merged_data["Score Enfant"] - merged_data["Moyenne"]) / merged_data["Ecart-type"]
-        merged_data["Z-Score"] = pd.to_numeric(merged_data["Z-Score"], errors="coerce")
-        merged_data = merged_data.dropna(subset=["Z-Score"])
-
         # Inverser les Z-scores pour les variables de temps d'inhibition
         time_variables = [
             "Inhibition verbale congruent temps",
             "Inhibition verbale incongruent temps",
             "Inhibition non verbale congruent temps",
-            "Inhibition non verbale incongruent temps", 
-            "Inhibition verbale interférence temps", 
-            "Inhibition non verbale interférence temps"
-        ]
+            "Inhibition non verbale incongruent temps"] 
+            #"Inhibition non verbale interférence temps",
+            #"Inhibition verbale interférence temps"]
+      
         
+        # Fusionner avec les données originales pour les calculs
+        merged_data = pd.merge(age_data, scores_df, on="Tâche", how="left")
+        merged_data["Z-Score"] = (merged_data["Score Enfant"] - merged_data["Moyenne"]) / merged_data["Ecart-type"]
+        merged_data.loc[merged_data["Tâche"].isin(time_variables), "Z-Score"] *= -1
+
+        merged_data["Z-Score"] = pd.to_numeric(merged_data["Z-Score"], errors="coerce")
+        merged_data = merged_data.dropna(subset=["Z-Score"])
+
         merged_data["Percentile (%)"] = norm.cdf(merged_data["Z-Score"]) * 100
 
         filled_data = merged_data[~merged_data["Score Enfant"].isna()]
@@ -292,14 +294,14 @@ if st.session_state["age_selected"]:
         # Créer la figure
         fig_width = 14
         fig_height = max(10, len(tasks) * 1.5)
-        fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+        fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=300)
 
         # Tracer les points pour chaque tâche
         point_colors = data["Catégorie"].map(category_colors)
         ax.scatter(percentiles, positions, color=point_colors, s=100, zorder=3)
 
-# Ajouter les scores de l'enfant avec un cadre coloré autour
-        for i, (score, category) in enumerate(zip(data["Score Enfant"], data["Catégorie"])):
+        # Ajouter les scores de l'enfant avec un cadre coloré autour
+        for i, (score, category, task_name, mean, std_dev) in enumerate(zip(data["Score Enfant"], data["Catégorie"], data["Tâche"], data["Moyenne"], data["Ecart-type"])):
             color = category_colors.get(category, "gray")  
 
             # Calculer la hauteur en fonction de l'espacement des points sur l'axe Y
@@ -308,33 +310,36 @@ if st.session_state["age_selected"]:
             else:
                 spacing = 1  
 
-            box_height = spacing*0.001  # Ajuster la hauteur proportionnellement à l'espacement
+            box_height = spacing * 0.2  # Ajuster la hauteur proportionnellement à l'espacement
             vertical_offset = box_height / 2  # Centrer le cadre autour du point
 
             # Ajouter le cadre
             bbox = FancyBboxPatch(
                 (105, positions[i] - vertical_offset),  # Coordonnées (x, y) centrées
-                width=8,  # Largeur du cadre
+                width=28,  # Largeur du cadre
                 height=box_height,  # Hauteur ajustée dynamiquement
                 boxstyle="square,pad=0.1",  # Angles arrondis avec padding
-                linewidth=2,  # Épaisseur de la bordure
+                linewidth=3,  # Épaisseur de la bordure
                 edgecolor=color,  # Couleur de la bordure
                 facecolor="white",  # Couleur de fond
                 zorder=1  # Couche d'affichage
             )
             ax.add_patch(bbox)  # Ajouter le cadre au graphique
+            
+            # Formatage du texte avec le score en gras
+            score_text = f"$\\bf{{{score:.0f}}}$\n[M = {mean:.1f} ± {std_dev:.1f}]"
 
             # Ajouter le texte centré dans le cadre
             ax.text(
-                x=109,  # Position X centrée dans le cadre
+                x=119,  # Position X centrée dans le cadre
                 y=positions[i],  # Position Y alignée verticalement au centre
-                s=f"{score:.0f}",  # Le score formaté
-                fontsize=14,
-                fontweight = "bold", 
+                s=score_text,  # Texte formaté
+                fontsize=13,
                 color="black",  # Couleur du texte
                 ha="center",  # Alignement horizontal centré
                 va="center",  # Alignement vertical centré
-                zorder=2  # Couche d'affichage au-dessus du cadre
+                zorder=2,  # Couche d'affichage au-dessus du cadre
+                usetex=False  # Utilisation de Matplotlib sans dépendance à LaTeX
             )
 
         # Ajouter des zones colorées pour les catégories
@@ -348,23 +353,23 @@ if st.session_state["age_selected"]:
         # Ligne de référence Z=0
         ax.axvline(50, color="black", linestyle="--", linewidth=0.8, zorder=2)
         
-        ax.set_xlim(0, 120)  # Axe X : percentiles de 0 à 100
+        ax.set_xlim(0, 140)  # Axe X : percentiles de 0 à 100
         ax.set_ylim(-1, len(tasks))
 
         # Configurer les ticks et les labels
         ax.set_xticks([0, 3, 15, 50, 85, 97, 100])
-        ax.set_xticklabels(["0", "3", "15", "50", "85", "97", "100"], fontsize=12, fontweight="bold", rotation = -35)
+        ax.set_xticklabels(["0", "3", "15", "50", "85", "97", "100"], fontsize=11, fontweight="bold", rotation = -40)
         ax.set_yticks(positions)
         ax.set_yticklabels(tasks, fontsize=16, fontweight="bold")
         ax.set_xlabel("Percentiles (%)", fontsize=14)
-        ax.xaxis.set_label_coords(0.43, -0.05)
+        ax.xaxis.set_label_coords(0.85 , -0.02)
         ax.set_ylabel("")
 
         fig.suptitle(
             "Résultats Batterie Comprendre",
             fontsize=24,
             fontweight="bold",
-            x= 0.53, 
+            x= 0.5, 
             y=1       
         )
 
@@ -398,13 +403,13 @@ if st.session_state["age_selected"]:
                 
                 # Ajouter le texte pour le titre de la catégorie avec un cadre coloré
                 ax.text(
-                    x=-25,  # Décalage vers la gauche (en dehors des ticks Y)
+                    x=-40,  # Décalage vers la gauche (en dehors des ticks Y)
                     y=mid_position,
                     s=category.upper(),
                     color="white",  # Couleur du texte
                     fontsize=20,
                     fontweight="bold",
-                    ha="right",  # Aligner à droite
+                    ha="center",  # Aligner à droite
                     va="center", 
                     rotation=90,
                     bbox=dict(
@@ -484,21 +489,46 @@ if st.session_state["scores_entered"]:
         age_data["Catégorie"] = age_data["Tâche"].apply(assign_category)
 
     # Afficher le tableau des résultats
-    st.write("")
-    df_to_style = age_data.copy()
+    def reorder_columns(dataframe):
+    # Liste de colonnes dans l'ordre souhaité
+        columns_order = [
+            "Tâche",
+            "Score Enfant",
+            "Z-Score",
+            "Moyenne",
+            "Ecart-type",
+            "Minimum",
+            "5e percentile",
+            "10e percentile",
+            "Q1",
+            "Q2 - mediane",
+            "Q3",
+            "90e percentile",
+            "Maximum",
+            "Percentile (%)",  # Vous pouvez déplacer cette colonne si nécessaire
+        ]
+        # Filtrer les colonnes existantes dans le DataFrame selon l'ordre
+        reordered_columns = [col for col in columns_order if col in dataframe.columns]
+        # Ajouter les colonnes restantes à la fin
+        remaining_columns = [col for col in dataframe.columns if col not in reordered_columns]
+        return dataframe[reordered_columns + remaining_columns]
     
-    # Supprimer la colonne "Catégorie"
-    df_to_display = age_data.drop(columns=["Catégorie"]).reset_index(drop=True)
+    st.write("")
+    df_to_style = age_data.copy()  # Copie des données originales pour stylisation
+
+    # Réorganiser les colonnes avant tout traitement
+    df_to_style = reorder_columns(df_to_style)
+
+    # Formater les nombres en flottants
     def format_floats(value):
         if isinstance(value, float):
             return f"{value:.2f}".rstrip('0').rstrip('.')  # Arrondir à deux décimales et supprimer les zéros inutiles
         return value
-    
 
-    df_to_style = df_to_style.applymap(format_floats)  
-    df_to_style["Percentile (%)"] = pd.to_numeric(age_data["Percentile (%)"], errors="coerce")
+    df_to_style = df_to_style.applymap(format_floats)
+    df_to_style["Percentile (%)"] = pd.to_numeric(df_to_style["Percentile (%)"], errors="coerce")  # Assurez-vous que les percentiles sont numériques
 
-    #couleur sur les percentiles
+    # Appliquer les styles conditionnels
     def color_percentiles_by_range(value):
         if pd.isna(value):  
             return ''  
@@ -527,19 +557,20 @@ if st.session_state["scores_entered"]:
         color = category_colors.get(category, "black")
         return [f"color: {color}; font-weight: bold;" if col == "Tâche" else "" for col in row.index]
 
-    # Couleur percentiles
     styled_df = df_to_style.style.applymap(color_percentiles_by_range, subset=["Percentile (%)"])
     styled_df = styled_df.apply(color_task_text_by_category, axis=1)
-
-    # Taille colonne
+    
+     # Taille colonne
     col_config = {
-        df_to_display.columns[0]: st.column_config.Column(width=300),  # Première colonne à 300
+        styled_df.columns[0]: st.column_config.Column(width=300),  # Première colonne à 300
     }
-    col_config.update({col: st.column_config.Column(width=100) for col in df_to_display.columns[1:]})  # Le reste à 100
+    col_config.update({col: st.column_config.Column(width=100) for col in styled_df.columns[1:]})  # Le reste à 100
 
+
+    # Afficher le tableau stylisé dans Streamlit
     st.dataframe(styled_df, hide_index=True, use_container_width=True)
 
-
+  
     # Sélection des tâches
     st.subheader("Sélectionnez les tâches à afficher dans le graphique")
     calculated_tasks = age_data[~age_data["Z-Score"].isna()]["Tâche"].tolist()
@@ -569,12 +600,16 @@ if st.session_state["scores_entered"]:
     )
 
 # Sauvegarde graphique
-    def save_styled_excel(dataframe):
+    def save_styled_excel_to_file(dataframe, file_name="resultats.xlsx"):
+        # Réorganiser les colonnes
+        dataframe = reorder_columns(dataframe)
+
+        # Initialiser le fichier Excel
         wb = Workbook()
         ws = wb.active
         ws.title = "Résultats"
 
-        # remplissage percentiles
+        # Couleurs pour les remplissages conditionnels
         fill_colors = {
             "red": "D44646",
             "orange": "F5A72F",
@@ -583,7 +618,7 @@ if st.session_state["scores_entered"]:
             "blue": "AEDFB6",
         }
 
-        # couleurs catégories
+        # Couleurs pour les catégories
         category_colors = {
             "Langage": "3798DA",
             "Mémoire de Travail": "ECA113",
@@ -592,22 +627,22 @@ if st.session_state["scores_entered"]:
             "Autre": "808080",
         }
 
-        #en-têtes
+        # Ajouter les en-têtes
         headers = list(dataframe.columns)
-        ws.append(headers)
+        ws.append(headers)  # Ajout des en-têtes
         header_font = Font(bold=True)
         for col in ws.iter_cols(min_row=1, max_row=1, min_col=1, max_col=len(headers)):
             for cell in col:
                 cell.font = header_font
 
-        # Couleur excel
+        # Ajouter les données ligne par ligne
         for idx, row in dataframe.iterrows():
-            ws.append(row.values.tolist())  
-            excel_row = ws[idx + 2]  
+            ws.append(row.tolist())  # Ajouter la ligne correspondant à l'ordre des colonnes
+            excel_row = ws[idx + 2]  # Ligne Excel correspondante (décalée par 1 pour l'en-tête)
 
+            # Appliquer des styles conditionnels
             for col_idx, cell in enumerate(excel_row, start=1):
-                
-                # Couleur percentiles
+                # Couleur pour les percentiles
                 if headers[col_idx - 1] == "Percentile (%)":
                     try:
                         value = float(cell.value)
@@ -627,54 +662,87 @@ if st.session_state["scores_entered"]:
                         if fill_color:
                             cell.fill = PatternFill(start_color=fill_color, end_color=fill_color, fill_type="solid")
                     except (ValueError, TypeError):
-                        pass  
+                        pass
 
-                # couleur colone tâche
+                # Couleur pour la colonne "Tâche"
                 if headers[col_idx - 1] == "Tâche":
-                    category = dataframe.loc[idx, "Catégorie"]
-                    color = category_colors.get(category, "000000")  
+                    category = dataframe.loc[idx, "Catégorie"] if "Catégorie" in dataframe.columns else None
+                    color = category_colors.get(category, "000000") if category else "000000"
                     cell.font = Font(color=color, bold=True)
-                
-        buffer = io.BytesIO()
+
+        # Sauvegarder le fichier Excel
         try:
-            wb.save(buffer)  
-            buffer.seek(0)  
+            wb.save(file_name)
+            st.success(f"Fichier Excel sauvegardé : {file_name}")
         except Exception as e:
             st.error(f"Erreur lors de la sauvegarde du fichier Excel : {e}")
-            return None  
-
-        return buffer
 
 
-    def save_graph_and_data(data, selected_tasks):
+    def save_graph_and_excel(dataframe, selected_tasks, file_name_prefix="resultats"):
+        dataframe = reorder_columns(dataframe)
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as zf:
-            
-            # graphique
+            # Graphique
             fig_buffer = io.BytesIO()
-            plot_grouped_scores(data, selected_tasks)  
-            plt.savefig(fig_buffer, format='png', dpi=300, bbox_inches="tight")
-            plt.close()  
+            plot_grouped_scores(dataframe, selected_tasks)  # Fonction pour tracer le graphique
+            plt.savefig(fig_buffer, format="png", dpi=300, bbox_inches="tight")
+            plt.close()  # Fermer le graphique pour libérer de la mémoire
             fig_buffer.seek(0)
-            zf.writestr(f"{st.session_state['child_id']}_Graphique_Comprendre.png", fig_buffer.read())
+            zf.writestr(f"{file_name_prefix}_Graphique.png", fig_buffer.read())
 
             # Excel
-            styled_excel = save_styled_excel(data) 
-            if styled_excel: 
-                zf.writestr(f"{st.session_state['child_id']}_Tableau_Comprendre.xlsx", styled_excel.read())
-            else:
-                st.warning("Le fichier Excel n'a pas pu être généré et ne sera pas inclus dans l'archive.")
+            excel_buffer = io.BytesIO()
+            wb = Workbook()
+            ws = wb.active
+            ws.title = "Résultats"
+
+            # Ajout des données et style dans Excel
+            headers = list(dataframe.columns)
+            ws.append(headers)
+            header_font = Font(bold=True)
+            for col in ws.iter_cols(min_row=1, max_row=1, min_col=1, max_col=len(headers)):
+                for cell in col:
+                    cell.font = header_font
+
+            for idx, row in dataframe.iterrows():
+                ws.append(row.values.tolist())
+
+            wb.save(excel_buffer)
+            excel_buffer.seek(0)
+            zf.writestr(f"{file_name_prefix}_Tableau.xlsx", excel_buffer.read())
 
         buffer.seek(0)
         return buffer
 
 
 if st.session_state["scores_entered"] and selected_tasks:
-        st.subheader("Téléchargez les résultats")
-        zip_file = save_graph_and_data(age_data, selected_tasks)
-        st.download_button(
-            label="📥 Télécharger le tableau des résultats et le graphique (ZIP)",
-            data=zip_file,
-            file_name=f"{st.session_state['child_id']}_Resultats_Comprendre.zip",
-            mime="application/zip"
-        )
+    st.subheader("Téléchargez les résultats")
+    file_name_prefix = f"{st.session_state['child_id']}_Resultats_Comprendre"
+    zip_file = save_graph_and_excel(age_data, selected_tasks, file_name_prefix)
+    st.download_button(
+        label="📥 Télécharger le tableau des résultats et le graphique (ZIP)",
+        data=zip_file,
+        file_name=f"{file_name_prefix}.zip",
+        mime="application/zip",
+    )
+
+# Footer avec citation APA 7
+st.markdown(
+    """
+    <hr style="border:1px solid #eee; margin-top: 50px; margin-bottom: 10px;">
+    <div style="text-align: center; font-size: 14px; color: gray;">
+    <p><strong>Projet COMPRENDRE</strong> - Pour plus d'informations sur ce projet, consultez le site suivant :<br>
+        <a href="https://www.perrone-bertolotti.fr/projet-comprendre" target="_blank">projet-comprendre</a>.
+    </p>
+
+    <p>Pour citer le protocole, veuillez utiliser la référence suivante :</p>
+        <p style="text-align: center;">
+            Perrone-Bertolotti, M., Zoubrinetzky, R., Faure, L., Vaidie, A., Nguyen-Morel, M.-A., Guinet, E., & Gillet-Perret, E. (2023). 
+            <em>COMPRENDRE Protocol: A computerized protocol for assessing oral language comprehension and executive functions in French-speaking children aged 5-8</em>. 
+            <a href="https://doi.org/10.31234/osf.io/whkcv" target="_blank">https://doi.org/10.31234/osf.io/whkcv</a>
+        </p>
+
+    </div>
+    """,
+    unsafe_allow_html=True
+)
