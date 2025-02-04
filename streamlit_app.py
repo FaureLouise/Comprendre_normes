@@ -686,7 +686,6 @@ if st.session_state["scores_entered"]:
             fig_buffer = io.BytesIO()
             plot_grouped_scores(dataframe, selected_tasks)  # Fonction pour tracer le graphique
             plt.savefig(fig_buffer, format="png", dpi=300, bbox_inches="tight")
-            plt.close()  # Fermer le graphique pour libérer de la mémoire
             fig_buffer.seek(0)
             zf.writestr(f"{file_name_prefix}_Graphique.png", fig_buffer.read())
 
