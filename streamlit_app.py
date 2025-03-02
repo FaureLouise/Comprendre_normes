@@ -13,7 +13,7 @@ from openpyxl.styles import PatternFill, Font
 from openpyxl import Workbook
 
 # Charger le fichier Excel
-file_path = 'NORMES_NOV_24.xlsx'
+file_path = 'NORMES_FEV_25.xlsx'
 excel_data = pd.ExcelFile(file_path)
 
 # Liste des groupes d'âge (onglets du fichier)
