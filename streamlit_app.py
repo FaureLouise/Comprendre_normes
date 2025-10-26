@@ -78,7 +78,7 @@ if st.session_state["age_selected"]:
             "Langage": [
                 ("Discrimination Phonologique", "Décision Lexicale Auditive"),
                 ("Mots Outils", "Stock Lexical"),
-                ("Compréhension Syntaxique", "Mots Outils - BOEHM")
+                ("Compréhension Syntaxique", "")
             ],
             "Mémoire de Travail Verbale": [
                 ("Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut"),
@@ -88,19 +88,11 @@ if st.session_state["age_selected"]:
                 ("Mémoire de travail non verbale endroit empan", "Mémoire de travail non verbale endroit brut"),
                 ("Mémoire de travail non verbale envers empan", "Mémoire de travail non verbale envers brut")  
             ],   
-            "Mise à jour Verbale": [
-                ("Mise à jour verbale empan", "Mise à jour verbale score"),
+            "Inhibition verbale": [
+                ("Inhibition verbale incongruent score", "Inhibition verbale incongruent temps")
             ],
-            "Mise à jour Non Verbale": [
-                ("Mise à jour non verbale empan", "Mise à jour non verbale score"),
-            ],
-            "INHIB verbale": [
-                ("Inhibition verbale congruent score", "Inhibition verbale incongruent score"),
-                ("Inhibition verbale congruent temps", "Inhibition verbale incongruent temps")
-            ],
-            "INHIB non verbale": [
-                ("Inhibition non verbale congruent score", "Inhibition non verbale incongruent score"),
-                ("Inhibition non verbale congruent temps", "Inhibition non verbale incongruent temps")
+            "Inhibition non verbale": [
+                ("Inhibition non verbale incongruent score", "Inhibition non verbale incongruent temps")
             ]
         }
 
@@ -116,7 +108,7 @@ if st.session_state["age_selected"]:
 
                 # Colonne 1 : Saisie pour task1
                 with col1:
-                    if task1 in age_data["Tâche"].values:
+                    if task1 and task1 in age_data["Tâche"].values:
                         score1 = st.text_input(f"{task1} :", value="")
                         if score1.strip(): 
                             try:
@@ -126,13 +118,13 @@ if st.session_state["age_selected"]:
                             except ValueError:
                                 st.error(f"Valeur non valide pour {task1}. Veuillez entrer un nombre.")
                                 inhibition_scores[task1] = score1
-                    else:
+                    elif task1:
                         st.warning(f"Pas de normes disponibles pour {task1}")
                         missing_norms.append(task1)
 
                 # Colonne 2 : Saisie pour task2
                 with col2:
-                    if task2 in age_data["Tâche"].values:
+                    if task2 and task2 in age_data["Tâche"].values:
                         score2 = st.text_input(f"{task2} :", value="")
                         if score2.strip():  
                             try:
@@ -142,53 +134,16 @@ if st.session_state["age_selected"]:
                             except ValueError:
                                 st.error(f"Valeur non valide pour {task2}. Veuillez entrer un nombre.")
                                 inhibition_scores[task2] = score2
-                    else:
+                    elif task2:
                         st.warning(f"Pas de normes disponibles pour {task2}")
                         missing_norms.append(task2)
-
-        # Calculs des interférences
-        interferences = {
-            "Inhibition verbale interférence score": (
-                inhibition_scores.get("Inhibition verbale incongruent score", 0) 
-                - inhibition_scores.get("Inhibition verbale congruent score", 0)
-            ),
-            "Inhibition non verbale interférence score": (
-                inhibition_scores.get("Inhibition non verbale incongruent score", 0) 
-                - inhibition_scores.get("Inhibition non verbale congruent score", 0)
-            ),
-            "Inhibition verbale interférence temps": (
-                inhibition_scores.get("Inhibition verbale congruent temps", 0) 
-                - inhibition_scores.get("Inhibition verbale incongruent temps", 0)
-            ),
-            "Inhibition non verbale interférence temps": (
-                inhibition_scores.get("Inhibition non verbale congruent temps", 0) 
-                - inhibition_scores.get("Inhibition non verbale incongruent temps", 0)
-            )
-        }
-
-        st.subheader("Scores d'interférence calculés")
-        for key, value in interferences.items():
-            st.write(f"**{key}** : {value:.2f}")
-
-       
-        filtered_interferences = {
-            key: value for key, value in interferences.items() if value != 0
-        }
-
-        user_scores.extend(
-            [{"Tâche": key, "Score Enfant": value} for key, value in filtered_interferences.items()]
-        )
 
         scores_df = pd.DataFrame(user_scores, columns=["Tâche", "Score Enfant"])
 
         # Inverser les Z-scores pour les variables de temps d'inhibition
         time_variables = [
-            "Inhibition verbale congruent temps",
             "Inhibition verbale incongruent temps",
-            "Inhibition non verbale congruent temps",
-            "Inhibition non verbale incongruent temps"] 
-            #"Inhibition non verbale interférence temps",
-            #"Inhibition verbale interférence temps"]
+            "Inhibition non verbale incongruent temps"]
       
         
         # Fusionner avec les données originales pour les calculs
@@ -214,7 +169,7 @@ if st.session_state["age_selected"]:
     categories_mapping = {
         "Langage": [
             "Discrimination Phonologique", "Décision Lexicale Auditive",
-            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Mots Outils - BOEHM"
+            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique"
         ],
         "Mémoire de Travail": [
             "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
@@ -222,17 +177,11 @@ if st.session_state["age_selected"]:
             "Mémoire de travail non verbale endroit empan", "Mémoire de travail non verbale endroit brut",
             "Mémoire de travail non verbale envers empan", "Mémoire de travail non verbale envers brut"
         ],
-        "Mise à jour": [
-            "Mise à jour verbale empan", "Mise à jour verbale score",
-            "Mise à jour non verbale empan", "Mise à jour non verbale score"
-        ],
         "Inhibition": [
-            "Inhibition verbale congruent score", "Inhibition verbale incongruent score",
-            "Inhibition verbale congruent temps", "Inhibition verbale incongruent temps",
-            "Inhibition verbale interférence score", "Inhibition verbale interférence temps",
-            "Inhibition non verbale congruent score", "Inhibition non verbale incongruent score",
-            "Inhibition non verbale congruent temps", "Inhibition non verbale incongruent temps",
-            "Inhibition non verbale interférence score", "Inhibition non verbale interférence temps"
+            "Inhibition verbale incongruent score",
+            "Inhibition verbale incongruent temps",
+            "Inhibition non verbale incongruent score",
+            "Inhibition non verbale incongruent temps"
         ]
     }
 
@@ -242,8 +191,7 @@ if st.session_state["age_selected"]:
         "Mots Outils": "Mots\nOutils",
         "Stock Lexical": "Stock\nLexical",
         "Compréhension Syntaxique": "Compréhension\nSyntaxique",
-        "Mots Outils - BOEHM": "BOEHM",
-        "Mémoire de travail verbale endroit empan": "Mémoire de travail\nVebrale\nendroit\nempan",
+        "Mémoire de travail verbale endroit empan": "Mémoire de travail\nVerbale\nendroit\nempan",
         "Mémoire de travail verbale endroit brut": "Mémoire de travail\nVerbale\nendroit\nbrut",
         "Mémoire de travail verbale envers empan": "Mémoire de travail\nVerbale\nenvers\nempan",
         "Mémoire de travail verbale envers brut": "Mémoire de travail\nVerbale\nenvers\nbrut",
@@ -251,22 +199,10 @@ if st.session_state["age_selected"]:
         "Mémoire de travail non verbale endroit brut": "Mémoire de travail\nNon Verbale\nendroit\nbrut",
         "Mémoire de travail non verbale envers empan": "Mémoire de travail\nNon Verbale\nenvers\nempan",
         "Mémoire de travail non verbale envers brut": "Mémoire de travail\nNon Verbale\nenvers\nbrut",
-        "Mise à jour verbale empan": "Mise-à-jour\nVerbale\nempan",
-        "Mise à jour verbale score": "Mise-à-jour\nVerbale\nbrut",
-        "Mise à jour non verbale empan": "Mise-à-jour\nNon Verbale\nempan",
-        "Mise à jour non verbale score": "Mise-à-jour\nNon Verbale\nbrut",
-        "Inhibition verbale congruent score": "Inhibition\nVerbale\nCongruent\nscore",
         "Inhibition verbale incongruent score": "Inhibition\nVerbale\nIncongruent\nscore",
-        "Inhibition verbale congruent temps": "Inhibition\nVerbale\nCongruent\ntemps",
         "Inhibition verbale incongruent temps": "Inhibition\nVerbale\nIncongruent\ntemps",
-        "Inhibition verbale interférence score": "Inhibition\nVerbale\nscore",
-        "Inhibition verbale interférence temps": "Inhibition\nVerbale\ntemps",
-        "Inhibition non verbale congruent score": "Inhibition\nNon Verbale\nCongruent\nscore",
         "Inhibition non verbale incongruent score": "Inhibition\nNon Verbale\nIncongruent\nscore",
-        "Inhibition non verbale congruent temps": "Inhibition\nNon Verbale\nCongruent\ntemps",
-        "Inhibition non verbale incongruent temps": "Inhibition\nNon Verbale\nIncongruent\ntemps",
-        "Inhibition non verbale interférence score": "Inhibition\nNon Verbale\nscore",
-        "Inhibition non verbale interférence temps": "Inhibition\nNon Verbale\ntemps"
+        "Inhibition non verbale incongruent temps": "Inhibition\nNon Verbale\nIncongruent\ntemps"
     }
 
     # Ajouter la colonne "Catégorie" pour chaque tâche
@@ -274,7 +210,6 @@ if st.session_state["age_selected"]:
         category_colors = {
             "Langage": "#3798da",
             "Mémoire de Travail": "#eca113",
-            "Mise à jour": "#e365d6",
             "Inhibition": "#8353da",
             "Autre": "gray"
         }
@@ -465,7 +400,7 @@ if st.session_state["scores_entered"]:
         categories_mapping = {
             "Langage": [
                 "Discrimination Phonologique", "Décision Lexicale Auditive",
-                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Mots Outils - BOEHM"
+                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique"
             ],
             "Mémoire de Travail": [
                 "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
@@ -473,17 +408,11 @@ if st.session_state["scores_entered"]:
                 "Mémoire de travail non verbale endroit empan", "Mémoire de travail non verbale endroit brut",
                 "Mémoire de travail non verbale envers empan", "Mémoire de travail non verbale envers brut"
             ],
-            "Mise à jour": [
-                "Mise à jour verbale empan", "Mise à jour verbale score",
-                "Mise à jour non verbale empan", "Mise à jour non verbale score"
-            ],
             "Inhibition": [
-                "Inhibition verbale congruent score", "Inhibition verbale incongruent score",
-                "Inhibition verbale congruent temps", "Inhibition verbale incongruent temps",
-                "Inhibition verbale interférence score", "Inhibition verbale interférence temps",
-                "Inhibition non verbale congruent score", "Inhibition non verbale incongruent score",
-                "Inhibition non verbale congruent temps", "Inhibition non verbale incongruent temps",
-                "Inhibition non verbale interférence score", "Inhibition non verbale interférence temps"
+                "Inhibition verbale incongruent score",
+                "Inhibition verbale incongruent temps",
+                "Inhibition non verbale incongruent score",
+                "Inhibition non verbale incongruent temps"
             ]
         }
         age_data["Catégorie"] = age_data["Tâche"].apply(assign_category)
@@ -549,7 +478,6 @@ if st.session_state["scores_entered"]:
         category_colors = {
             "Langage": "#3798da",
             "Mémoire de Travail": "#eca113",
-            "Mise à jour": "#e365d6",
             "Inhibition": "#8353da",
             "Autre": "gray"
         }
@@ -622,7 +550,6 @@ if st.session_state["scores_entered"]:
         category_colors = {
             "Langage": "3798DA",
             "Mémoire de Travail": "ECA113",
-            "Mise à jour": "E365D6",
             "Inhibition": "8353DA",
             "Autre": "808080",
         }
