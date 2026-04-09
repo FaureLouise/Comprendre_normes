@@ -454,7 +454,11 @@ if st.session_state["scores_entered"]:
             return f"{value:.2f}".rstrip('0').rstrip('.')  # Arrondir à deux décimales et supprimer les zéros inutiles
         return value
 
-    df_to_style = df_to_style.applymap(format_floats)
+    # pandas >= 2.1: DataFrame.map ; pandas plus ancien: DataFrame.applymap
+    if hasattr(df_to_style, "map"):
+        df_to_style = df_to_style.map(format_floats)
+    else:
+        df_to_style = df_to_style.applymap(format_floats)
     df_to_style["Percentile (%)"] = pd.to_numeric(df_to_style["Percentile (%)"], errors="coerce")  # Assurez-vous que les percentiles sont numériques
 
     # Appliquer les styles conditionnels
@@ -485,7 +489,11 @@ if st.session_state["scores_entered"]:
         color = category_colors.get(category, "black")
         return [f"color: {color}; font-weight: bold;" if col == "Tâche" else "" for col in row.index]
 
-    styled_df = df_to_style.style.applymap(color_percentiles_by_range, subset=["Percentile (%)"])
+    # pandas >= 2.1: Styler.map ; pandas plus ancien: Styler.applymap
+    if hasattr(df_to_style.style, "map"):
+        styled_df = df_to_style.style.map(color_percentiles_by_range, subset=["Percentile (%)"])
+    else:
+        styled_df = df_to_style.style.applymap(color_percentiles_by_range, subset=["Percentile (%)"])
     styled_df = styled_df.apply(color_task_text_by_category, axis=1)
     
      # Taille colonne
