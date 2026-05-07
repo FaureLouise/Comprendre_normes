@@ -13,7 +13,7 @@ from openpyxl.styles import PatternFill, Font
 from openpyxl import Workbook
 
 # Charger le fichier Excel
-file_path = 'NORMES_FEV_25.xlsx'
+file_path = 'NORMES_MAI_26.xlsx'
 excel_data = pd.ExcelFile(file_path)
 
 # Liste des groupes d'âge (onglets du fichier)
@@ -78,7 +78,7 @@ if st.session_state["age_selected"]:
             "Langage": [
                 ("Discrimination Phonologique", "Décision Lexicale Auditive"),
                 ("Mots Outils", "Stock Lexical"),
-                ("Compréhension Syntaxique", "")
+                ("Compréhension Syntaxique", "Vocabulaire")
             ],
             "Mémoire de Travail Verbale": [
                 ("Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut"),
@@ -169,7 +169,7 @@ if st.session_state["age_selected"]:
     categories_mapping = {
         "Langage": [
             "Discrimination Phonologique", "Décision Lexicale Auditive",
-            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique"
+            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique","Vocabulaire"
         ],
         "Mémoire de Travail": [
             "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
@@ -191,6 +191,7 @@ if st.session_state["age_selected"]:
         "Mots Outils": "Mots\nOutils",
         "Stock Lexical": "Stock\nLexical",
         "Compréhension Syntaxique": "Compréhension\nSyntaxique",
+        "Vocabulaire": "Vocabulaire",
         "Mémoire de travail verbale endroit empan": "Mémoire de travail\nVerbale\nendroit\nempan",
         "Mémoire de travail verbale endroit brut": "Mémoire de travail\nVerbale\nendroit\nbrut",
         "Mémoire de travail verbale envers empan": "Mémoire de travail\nVerbale\nenvers\nempan",
