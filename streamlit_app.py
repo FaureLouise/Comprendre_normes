@@ -62,6 +62,12 @@ def load_age_data(sheet_name, excel_file):
         return pd.DataFrame()
 
 
+def normalize_task_name(task):
+    if not isinstance(task, str):
+        return ""
+    return task.strip().lower()
+
+
 if st.session_state["age_selected"]:
     st.header("Étape 2 : Entrez les scores")
     age_data = load_age_data(selected_age_group, excel_data)
@@ -72,6 +78,10 @@ if st.session_state["age_selected"]:
         age_data = age_data[["Tâche", "Moyenne", "Ecart-type", "Minimum", 
                              "5e percentile", "10e percentile", "Q1", 
                              "Q2 - mediane", "Q3", "90e percentile", "Maximum"]].dropna()
+        normalized_task_lookup = {
+            normalize_task_name(task_name): task_name
+            for task_name in age_data["Tâche"].astype(str).tolist()
+        }
 
         # Liste des catégories avec les tâches regroupées par paires
         categories = {
@@ -108,32 +118,34 @@ if st.session_state["age_selected"]:
 
                 # Colonne 1 : Saisie pour task1
                 with col1:
-                    if task1 and task1 in age_data["Tâche"].values:
+                    matched_task1 = normalized_task_lookup.get(normalize_task_name(task1))
+                    if task1 and matched_task1:
                         score1 = st.text_input(f"{task1} :", value="")
                         if score1.strip(): 
                             try:
                                 score1 = float(score1)
-                                user_scores.append({"Tâche": task1, "Score Enfant": score1})
-                                inhibition_scores[task1] = score1
+                                user_scores.append({"Tâche": matched_task1, "Score Enfant": score1})
+                                inhibition_scores[matched_task1] = score1
                             except ValueError:
                                 st.error(f"Valeur non valide pour {task1}. Veuillez entrer un nombre.")
-                                inhibition_scores[task1] = score1
+                                inhibition_scores[matched_task1] = score1
                     elif task1:
                         st.warning(f"Pas de normes disponibles pour {task1}")
                         missing_norms.append(task1)
 
                 # Colonne 2 : Saisie pour task2
                 with col2:
-                    if task2 and task2 in age_data["Tâche"].values:
+                    matched_task2 = normalized_task_lookup.get(normalize_task_name(task2))
+                    if task2 and matched_task2:
                         score2 = st.text_input(f"{task2} :", value="")
                         if score2.strip():  
                             try:
                                 score2 = float(score2)
-                                user_scores.append({"Tâche": task2, "Score Enfant": score2})
-                                inhibition_scores[task2] = score2
+                                user_scores.append({"Tâche": matched_task2, "Score Enfant": score2})
+                                inhibition_scores[matched_task2] = score2
                             except ValueError:
                                 st.error(f"Valeur non valide pour {task2}. Veuillez entrer un nombre.")
-                                inhibition_scores[task2] = score2
+                                inhibition_scores[matched_task2] = score2
                     elif task2:
                         st.warning(f"Pas de normes disponibles pour {task2}")
                         missing_norms.append(task2)
@@ -379,13 +391,6 @@ if st.session_state["age_selected"]:
 
         # Afficher le graphique
         st.pyplot(fig)
-
-
-# Ajouter la colonne "Catégorie" pour chaque tâche
-def normalize_task_name(task):
-    if not isinstance(task, str):
-        return ""
-    return task.strip().lower()
 
 
 def assign_category(task):
