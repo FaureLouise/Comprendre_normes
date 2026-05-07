@@ -382,9 +382,17 @@ if st.session_state["age_selected"]:
 
 
 # Ajouter la colonne "Catégorie" pour chaque tâche
+def normalize_task_name(task):
+    if not isinstance(task, str):
+        return ""
+    return task.strip().lower()
+
+
 def assign_category(task):
+    normalized_task = normalize_task_name(task)
     for category, tasks in categories_mapping.items():
-        if task in tasks:
+        normalized_tasks = [normalize_task_name(t) for t in tasks]
+        if normalized_task in normalized_tasks:
             return category
     return "Autre"
 
@@ -401,7 +409,7 @@ if st.session_state["scores_entered"]:
         categories_mapping = {
             "Langage": [
                 "Discrimination Phonologique", "Décision Lexicale Auditive",
-                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique"
+                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Vocabulaire"
             ],
             "Mémoire de Travail": [
                 "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
