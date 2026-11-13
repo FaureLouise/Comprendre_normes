@@ -8,7 +8,6 @@ import openpyxl
 from pandas import ExcelWriter
 from streamlit_sortables import sort_items
 from scipy.stats import norm
-from matplotlib.patches import FancyBboxPatch
 from openpyxl.styles import PatternFill, Font
 from openpyxl import Workbook
 
@@ -66,6 +65,57 @@ def normalize_task_name(task):
     if not isinstance(task, str):
         return ""
     return task.strip().lower()
+
+
+def norm_percentile_interval(score, norm_row, reverse=False):
+    percentile_columns = [
+        ("5e percentile", 5),
+        ("10e percentile", 10),
+        ("Q1", 25),
+        ("Q2 - mediane", 50),
+        ("Q3", 75),
+        ("90e percentile", 90),
+    ]
+    anchors = [
+        (float(norm_row[column]), 100 - percentile if reverse else percentile)
+        for column, percentile in percentile_columns
+    ]
+
+    grouped_anchors = []
+    for norm_score, percentile in anchors:
+        if grouped_anchors and np.isclose(
+            norm_score, grouped_anchors[-1][0], rtol=0, atol=1e-6
+        ):
+            grouped_anchors[-1][1] = min(grouped_anchors[-1][1], percentile)
+            grouped_anchors[-1][2] = max(grouped_anchors[-1][2], percentile)
+        else:
+            grouped_anchors.append([norm_score, percentile, percentile])
+
+    score = float(score)
+    low_score_edge = 100 if reverse else 0
+    high_score_edge = 0 if reverse else 100
+    if score <= grouped_anchors[0][0]:
+        return (
+            min(low_score_edge, grouped_anchors[0][1]),
+            max(low_score_edge, grouped_anchors[0][2]),
+        )
+    if score >= grouped_anchors[-1][0]:
+        return (
+            min(high_score_edge, grouped_anchors[-1][1]),
+            max(high_score_edge, grouped_anchors[-1][2]),
+        )
+
+    for norm_score, lower, upper in grouped_anchors[1:-1]:
+        if np.isclose(score, norm_score, rtol=0, atol=1e-6):
+            return lower, upper
+
+    for left, right in zip(grouped_anchors, grouped_anchors[1:]):
+        if left[0] < score < right[0]:
+            return min(left[1], left[2], right[1], right[2]), max(
+                left[1], left[2], right[1], right[2]
+            )
+
+    raise ValueError(f"Impossible de situer le score {score} dans les normes.")
 
 
 if st.session_state["age_selected"]:
@@ -230,9 +280,18 @@ if st.session_state["age_selected"]:
         # Filtrer les données pour inclure uniquement les tâches sélectionnées
         data = data[data["Tâche"].isin(selected_tasks)]
 
-        # Liste des tâches (abrégées) et leurs Z-scores
+        # Liste des tâches (abrégées) et des intervalles de rang normatif
         tasks = data["Tâche"].map(task_name_mapping).tolist()
-        percentiles = data["Percentile (%)"].tolist()
+        percentile_intervals = [
+            norm_percentile_interval(
+                row["Score Enfant"],
+                row,
+                reverse=row["Tâche"] in time_variables
+            )
+            for _, row in data.iterrows()
+        ]
+        percentile_lowers = [interval[0] for interval in percentile_intervals]
+        percentile_uppers = [interval[1] for interval in percentile_intervals]
 
         positions = np.arange(len(tasks))  
 
@@ -244,50 +303,46 @@ if st.session_state["age_selected"]:
         fig_height = max(10, len(tasks) * 1.5)
         fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=300)
 
-        # Tracer les points pour chaque tâche
+        # Tracer les intervalles définis par les seuils normatifs
         point_colors = data["Catégorie"].map(category_colors)
-        ax.scatter(percentiles, positions, color=point_colors, s=100, zorder=3)
+        for position, lower, upper, color in zip(
+            positions, percentile_lowers, percentile_uppers, point_colors
+        ):
+            if np.isclose(lower, upper):
+                ax.scatter(lower, position, color=color, s=100, zorder=3)
+            else:
+                ax.hlines(position, lower, upper, color=color, linewidth=4, zorder=3)
+                ax.vlines(
+                    [lower, upper],
+                    position - 0.08,
+                    position + 0.08,
+                    color=color,
+                    linewidth=2,
+                    zorder=3
+                )
 
         # Ajouter les scores de l'enfant avec un cadre coloré autour
         for i, (score, category, task_name, mean, std_dev) in enumerate(zip(data["Score Enfant"], data["Catégorie"], data["Tâche"], data["Moyenne"], data["Ecart-type"])):
             color = category_colors.get(category, "gray")  
-
-            # Calculer la hauteur en fonction de l'espacement des points sur l'axe Y
-            if len(positions) > 1:  
-                spacing = positions[1] - positions[0]  
-            else:
-                spacing = 1  
-
-            box_height = spacing * 0.2  # Ajuster la hauteur proportionnellement à l'espacement
-            vertical_offset = box_height / 2  # Centrer le cadre autour du point
-
-            # Ajouter le cadre
-            bbox = FancyBboxPatch(
-                (105, positions[i] - vertical_offset),  # Coordonnées (x, y) centrées
-                width=28,  # Largeur du cadre
-                height=box_height,  # Hauteur ajustée dynamiquement
-                boxstyle="square,pad=0.1",  # Angles arrondis avec padding
-                linewidth=3,  # Épaisseur de la bordure
-                edgecolor=color,  # Couleur de la bordure
-                facecolor="white",  # Couleur de fond
-                zorder=1  # Couche d'affichage
-            )
-            ax.add_patch(bbox)  # Ajouter le cadre au graphique
             
-            # Formatage du texte avec le score en gras
             score_text = f"$\\bf{{{score:.0f}}}$\n[M = {mean:.1f} ± {std_dev:.1f}]"
-
-            # Ajouter le texte centré dans le cadre
             ax.text(
-                x=119,  # Position X centrée dans le cadre
-                y=positions[i],  # Position Y alignée verticalement au centre
-                s=score_text,  # Texte formaté
+                x=1.04,
+                y=positions[i],
+                s=score_text,
                 fontsize=13,
-                color="black",  # Couleur du texte
-                ha="center",  # Alignement horizontal centré
-                va="center",  # Alignement vertical centré
-                zorder=2,  # Couche d'affichage au-dessus du cadre
-                usetex=False  # Utilisation de Matplotlib sans dépendance à LaTeX
+                color="black",
+                ha="left",
+                va="center",
+                zorder=2,
+                usetex=False,
+                transform=ax.get_yaxis_transform(),
+                bbox=dict(
+                    boxstyle="square,pad=0.2",
+                    linewidth=2,
+                    edgecolor=color,
+                    facecolor="white"
+                )
             )
 
         # Ajouter des zones colorées pour les catégories
@@ -301,7 +356,7 @@ if st.session_state["age_selected"]:
         # Ligne de référence Z=0
         ax.axvline(50, color="black", linestyle="--", linewidth=0.8, zorder=2)
         
-        ax.set_xlim(0, 140)  # Axe X : percentiles de 0 à 100
+        ax.set_xlim(0, 100)
         ax.set_ylim(-1, len(tasks))
 
         # Configurer les ticks et les labels
@@ -309,8 +364,8 @@ if st.session_state["age_selected"]:
         ax.set_xticklabels(["0", "3", "15", "50", "85", "97", "100"], fontsize=11, fontweight="bold", rotation = -40)
         ax.set_yticks(positions)
         ax.set_yticklabels(tasks, fontsize=16, fontweight="bold")
-        ax.set_xlabel("Percentiles (%)", fontsize=14)
-        ax.xaxis.set_label_coords(0.85 , -0.02)
+        ax.set_xlabel("Rang normatif (intervalle de percentiles, %)", fontsize=14)
+        ax.xaxis.set_label_coords(0.5, -0.02)
         ax.set_ylabel("")
 
         fig.suptitle(
@@ -320,23 +375,6 @@ if st.session_state["age_selected"]:
             x= 0.5, 
             y=1       
         )
-
-        for idx, category in enumerate(category_colors.keys()):
-            # Filtrer les données pour cette catégorie
-            category_data = data[data["Catégorie"] == category]
-            
-            # Obtenir les positions et les percentiles pour les tâches dans la catégorie
-            category_positions = category_data["Position"].tolist() if not category_data.empty else []
-            category_percentiles = category_data["Percentile (%)"].tolist() if not category_data.empty else []
-
-            # Relier les points avec une ligne si la catégorie n'est pas vide
-            if category_positions and category_percentiles:
-                ax.plot(
-                    category_percentiles,  # Les percentiles sur l'axe X
-                    category_positions,   # Les positions sur l'axe Y
-                    marker="o", linestyle="-", color=category_colors[category],
-                    label=category, zorder=4, linewidth=2
-                )
 
         # Ajouter des titres par catégorie sur l'axe Y
         for category, color in category_colors.items():
@@ -386,8 +424,7 @@ if st.session_state["age_selected"]:
 
 
         # Ajuster la mise en page
-        plt.subplots_adjust(left=0.3, right=0.95, top=0.85, bottom=0.15)
-        plt.tight_layout()
+        plt.subplots_adjust(left=0.3, right=0.76, top=0.85, bottom=0.15)
 
         # Afficher le graphique
         st.pyplot(fig)
