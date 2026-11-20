@@ -367,7 +367,6 @@ if st.session_state["age_selected"]:
         ax.set_xticklabels(["0", "3", "15", "50", "85", "97", "100"], fontsize=11, fontweight="bold", rotation = -40)
         ax.set_yticks(positions)
         ax.set_yticklabels(tasks, fontsize=16, fontweight="bold")
-        ax.set_xlabel("Rang normatif (intervalle de percentiles, %)", fontsize=14)
         ax.xaxis.set_label_coords(0.5, -0.02)
         ax.set_ylabel("")
 
