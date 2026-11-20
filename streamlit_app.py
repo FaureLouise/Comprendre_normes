@@ -253,7 +253,7 @@ if st.session_state["age_selected"]:
         "Mots Outils": "Mots\nOutils",
         "Stock Lexical": "Stock\nLexical",
         "Compréhension Syntaxique": "Compréhension\nSyntaxique",
-        "Vocabulaire": "Vocabulaire",
+        "Vocabulaire": "Vocabulaire (New)",
         "Mémoire de travail verbale endroit empan": "Mémoire de travail\nVerbale\nendroit\nempan",
         "Mémoire de travail verbale endroit brut": "Mémoire de travail\nVerbale\nendroit\nbrut",
         "Mémoire de travail verbale envers empan": "Mémoire de travail\nVerbale\nenvers\nempan",
