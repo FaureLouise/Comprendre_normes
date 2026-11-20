@@ -230,7 +230,7 @@ if st.session_state["age_selected"]:
         }
 
         # Filtrer les données pour inclure uniquement les tâches sélectionnées
-        data = data[data["Tâche"].isin(selected_tasks)]
+        data = data[data["Tâche"].isin(selected_tasks)].copy()
 
         # Liste des tâches (abrégées) et rangs percentiles du tableau
         tasks = data["Tâche"].map(task_name_mapping).tolist()
@@ -248,6 +248,15 @@ if st.session_state["age_selected"]:
 
         # Tracer le rang percentile de chaque tâche
         point_colors = data["Catégorie"].map(category_colors)
+        for category in ("Langage", "Mémoire de Travail", "Inhibition"):
+            category_data = data[data["Catégorie"] == category]
+            ax.plot(
+                category_data["Percentile (%)"],
+                category_data["Position"],
+                color=category_colors[category],
+                linewidth=1.5,
+                zorder=2
+            )
         ax.scatter(percentiles, positions, c=point_colors, s=100, zorder=3)
 
         # Ajouter les scores de l'enfant avec un cadre coloré autour
