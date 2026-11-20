@@ -125,6 +125,9 @@ if st.session_state["age_selected"]:
     if age_data.empty:
         st.error("Impossible de charger les données pour le groupe d'âge sélectionné.")
     else:
+        age_data["Tâche"] = age_data["Tâche"].replace(
+            {"Vocabulaire": "Vocabulaire (New)"}
+        )
         age_data = age_data[["Tâche", "Moyenne", "Ecart-type", "Minimum", 
                              "5e percentile", "10e percentile", "Q1", 
                              "Q2 - mediane", "Q3", "90e percentile", "Maximum"]].dropna()
@@ -138,7 +141,7 @@ if st.session_state["age_selected"]:
             "Langage": [
                 ("Discrimination Phonologique", "Décision Lexicale Auditive"),
                 ("Mots Outils", "Stock Lexical"),
-                ("Compréhension Syntaxique", "Vocabulaire")
+                ("Compréhension Syntaxique", "Vocabulaire (New)")
             ],
             "Mémoire de Travail Verbale": [
                 ("Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut"),
@@ -231,7 +234,7 @@ if st.session_state["age_selected"]:
     categories_mapping = {
         "Langage": [
             "Discrimination Phonologique", "Décision Lexicale Auditive",
-            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique","Vocabulaire"
+            "Mots Outils", "Stock Lexical", "Compréhension Syntaxique","Vocabulaire (New)"
         ],
         "Mémoire de Travail": [
             "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
@@ -253,7 +256,7 @@ if st.session_state["age_selected"]:
         "Mots Outils": "Mots\nOutils",
         "Stock Lexical": "Stock\nLexical",
         "Compréhension Syntaxique": "Compréhension\nSyntaxique",
-        "Vocabulaire": "Vocabulaire (New)",
+        "Vocabulaire (New)": "Vocabulaire (New)",
         "Mémoire de travail verbale endroit empan": "Mémoire de travail\nVerbale\nendroit\nempan",
         "Mémoire de travail verbale endroit brut": "Mémoire de travail\nVerbale\nendroit\nbrut",
         "Mémoire de travail verbale envers empan": "Mémoire de travail\nVerbale\nenvers\nempan",
@@ -451,7 +454,7 @@ if st.session_state["scores_entered"]:
         categories_mapping = {
             "Langage": [
                 "Discrimination Phonologique", "Décision Lexicale Auditive",
-                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Vocabulaire"
+                "Mots Outils", "Stock Lexical", "Compréhension Syntaxique", "Vocabulaire (New)"
             ],
             "Mémoire de Travail": [
                 "Mémoire de travail verbale endroit empan", "Mémoire de travail verbale endroit brut",
