@@ -67,57 +67,6 @@ def normalize_task_name(task):
     return task.strip().lower()
 
 
-def norm_percentile_interval(score, norm_row, reverse=False):
-    percentile_columns = [
-        ("5e percentile", 5),
-        ("10e percentile", 10),
-        ("Q1", 25),
-        ("Q2 - mediane", 50),
-        ("Q3", 75),
-        ("90e percentile", 90),
-    ]
-    anchors = [
-        (float(norm_row[column]), 100 - percentile if reverse else percentile)
-        for column, percentile in percentile_columns
-    ]
-
-    grouped_anchors = []
-    for norm_score, percentile in anchors:
-        if grouped_anchors and np.isclose(
-            norm_score, grouped_anchors[-1][0], rtol=0, atol=1e-6
-        ):
-            grouped_anchors[-1][1] = min(grouped_anchors[-1][1], percentile)
-            grouped_anchors[-1][2] = max(grouped_anchors[-1][2], percentile)
-        else:
-            grouped_anchors.append([norm_score, percentile, percentile])
-
-    score = float(score)
-    low_score_edge = 100 if reverse else 0
-    high_score_edge = 0 if reverse else 100
-    if score <= grouped_anchors[0][0]:
-        return (
-            min(low_score_edge, grouped_anchors[0][1]),
-            max(low_score_edge, grouped_anchors[0][2]),
-        )
-    if score >= grouped_anchors[-1][0]:
-        return (
-            min(high_score_edge, grouped_anchors[-1][1]),
-            max(high_score_edge, grouped_anchors[-1][2]),
-        )
-
-    for norm_score, lower, upper in grouped_anchors[1:-1]:
-        if np.isclose(score, norm_score, rtol=0, atol=1e-6):
-            return lower, upper
-
-    for left, right in zip(grouped_anchors, grouped_anchors[1:]):
-        if left[0] < score < right[0]:
-            return min(left[1], left[2], right[1], right[2]), max(
-                left[1], left[2], right[1], right[2]
-            )
-
-    raise ValueError(f"Impossible de situer le score {score} dans les normes.")
-
-
 if st.session_state["age_selected"]:
     st.header("Étape 2 : Entrez les scores")
     age_data = load_age_data(selected_age_group, excel_data)
@@ -283,18 +232,9 @@ if st.session_state["age_selected"]:
         # Filtrer les données pour inclure uniquement les tâches sélectionnées
         data = data[data["Tâche"].isin(selected_tasks)]
 
-        # Liste des tâches (abrégées) et des intervalles de rang normatif
+        # Liste des tâches (abrégées) et rangs percentiles du tableau
         tasks = data["Tâche"].map(task_name_mapping).tolist()
-        percentile_intervals = [
-            norm_percentile_interval(
-                row["Score Enfant"],
-                row,
-                reverse=row["Tâche"] in time_variables
-            )
-            for _, row in data.iterrows()
-        ]
-        percentile_lowers = [interval[0] for interval in percentile_intervals]
-        percentile_uppers = [interval[1] for interval in percentile_intervals]
+        percentiles = data["Percentile (%)"]
 
         positions = np.arange(len(tasks))  
 
@@ -306,23 +246,9 @@ if st.session_state["age_selected"]:
         fig_height = max(10, len(tasks) * 1.5)
         fig, ax = plt.subplots(figsize=(fig_width, fig_height), dpi=300)
 
-        # Tracer les intervalles définis par les seuils normatifs
+        # Tracer le rang percentile de chaque tâche
         point_colors = data["Catégorie"].map(category_colors)
-        for position, lower, upper, color in zip(
-            positions, percentile_lowers, percentile_uppers, point_colors
-        ):
-            if np.isclose(lower, upper):
-                ax.scatter(lower, position, color=color, s=100, zorder=3)
-            else:
-                ax.hlines(position, lower, upper, color=color, linewidth=4, zorder=3)
-                ax.vlines(
-                    [lower, upper],
-                    position - 0.08,
-                    position + 0.08,
-                    color=color,
-                    linewidth=2,
-                    zorder=3
-                )
+        ax.scatter(percentiles, positions, c=point_colors, s=100, zorder=3)
 
         # Ajouter les scores de l'enfant avec un cadre coloré autour
         for i, (score, category, task_name, mean, std_dev) in enumerate(zip(data["Score Enfant"], data["Catégorie"], data["Tâche"], data["Moyenne"], data["Ecart-type"])):
